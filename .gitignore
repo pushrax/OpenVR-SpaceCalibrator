@@ -1,0 +1,9 @@
+ipch
+.vs
+*.db
+*.opendb
+*.aps
+*.user
+/OpenVR-SpaceCalibrator/x64/
+/x64/
+/lib/boost*
