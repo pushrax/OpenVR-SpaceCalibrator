@@ -2,7 +2,7 @@
 
 Use VR devices from one company with any other.
 
-This is **beta software** and may not work for you. A quick video demo is available at https://www.youtube.com/watch?v=Khzta0hgvrA
+This is **beta software** and may not work for you. A quick video demo is available at https://www.youtube.com/watch?v=W3TnQd9JMl4
 
 ## Usage
 
