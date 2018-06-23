@@ -104,6 +104,22 @@ struct DSample
 	Eigen::Vector3d ref, target;
 };
 
+bool StartsWith(const std::string &str, const std::string &prefix)
+{
+	if (str.length() < prefix.length())
+		return false;
+
+	return str.compare(0, prefix.length(), prefix) == 0;
+}
+
+bool EndsWith(const std::string &str, const std::string &suffix)
+{
+	if (str.length() < suffix.length())
+		return false;
+
+	return str.compare(str.length() - suffix.length(), suffix.length(), suffix) == 0;
+}
+
 Eigen::Vector3d AxisFromRotationMatrix3(Eigen::Matrix3d rot)
 {
 	return Eigen::Vector3d(rot(2,1) - rot(1,2), rot(0,2) - rot(2,0), rot(1,0) - rot(0,1));
@@ -136,22 +152,6 @@ DSample DeltaRotationSamples(Sample s1, Sample s2)
 	return ds;
 }
 
-bool StartsWith(const std::string &str, const std::string &prefix)
-{
-	if (str.length() < prefix.length())
-		return false;
-
-	return str.compare(0, prefix.length(), prefix) == 0;
-}
-
-bool EndsWith(const std::string &str, const std::string &suffix)
-{
-	if (str.length() < suffix.length())
-		return false;
-
-	return str.compare(str.length() - suffix.length(), suffix.length(), suffix) == 0;
-}
-
 Eigen::Vector3d CalibrateRotation(const std::vector<Sample> &samples)
 {
 	std::vector<DSample> deltas;
@@ -165,7 +165,7 @@ Eigen::Vector3d CalibrateRotation(const std::vector<Sample> &samples)
 				deltas.push_back(delta);
 		}
 	}
-	printf("\ngot %zd samples with %zd delta samples\n", samples.size(), deltas.size());
+	printf("got %zd samples with %zd delta samples\n", samples.size(), deltas.size());
 
 	// Kabsch algorithm
 
@@ -205,7 +205,6 @@ Eigen::Vector3d CalibrateRotation(const std::vector<Sample> &samples)
 	rot.transposeInPlace();
 
 	Eigen::Vector3d euler = rot.eulerAngles(2, 1, 0) * 180.0 / EIGEN_PI;
-	euler[2] *= -1;
 
 	printf("rotation yaw=%.2f pitch=%.2f roll=%.2f\n", euler[1], euler[2], euler[0]);
 	return euler;
@@ -246,10 +245,9 @@ Eigen::Vector3d CalibrateTranslation(const std::vector<Sample> &samples)
 	}
 
 	Eigen::Vector3d trans = coefficients.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(constants);
-	trans(0) *= -1.0;
 	auto transcm = trans * 100.0;
 
-	printf("\ntranslation x=%.2f y=%.2f z=%.2f\n", transcm[0], transcm[1], transcm[2]);
+	printf("translation x=%.2f y=%.2f z=%.2f\n", transcm[0], transcm[1], transcm[2]);
 	return transcm;
 }
 
@@ -498,6 +496,7 @@ void CalibrationTick()
 
 	if (samples.size() == totalSamples)
 	{
+		printf("\n");
 		if (ctx.state == Rotation)
 		{
 			ctx.calibratedRotation = CalibrateRotation(samples);
