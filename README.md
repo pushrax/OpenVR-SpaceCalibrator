@@ -6,6 +6,10 @@ This is **beta software** and may not work for you. A quick video demo is availa
 
 ## Usage
 
+### Calibration
+
+If you don't already run a setup with multiple device types, see [Setting up SteamVR](#setting-up-steamvr).
+
 0. Install [OpenVR-InputEmulator](https://github.com/matzman666/OpenVR-InputEmulator).
 1. Download and unzip the [latest release](https://github.com/pushrax/OpenVR-SpaceCalibrator/releases) of OpenVR-SpaceCalibrator.
 2. Run SteamVR, and turn on your Touch controllers and only one Vive device to use for calibration.
@@ -18,17 +22,35 @@ This is **beta software** and may not work for you. A quick video demo is availa
 
 Next time you run SteamVR and OpenVR-InputEmulator it will load the calibration automatically and apply it to any Vive devices you turn on.
 
-## Manually editing the calibration
+### Setting up SteamVR
+
+Every hardware designer with their own tracking system needs to make a "driver"
+so SteamVR can see their tracking data. SteamVR by default will load only one driver at a time,
+but we can tell it to load all of them by editing the vrsettings config file.
+
+Open `steam\steamapps\common\SteamVR\resources\settings\default.vrsettings` in a text editor,
+look for the line that has `"activateMultipleDrivers": false` and change the `false` to `true`.
+In some guides online you may also see references to `requireHmd`, this does _not_ need to be changed
+unless you truly want to be able to run without any kind of HMD.
+
+Sometimes when SteamVR updates this file seems to get wiped, if your setup stops working you might
+have to edit the config again.
+
+Make sure to run room setup in your HMD's software (e.g. Oculus) and also in SteamVR.
+An inaccurate room setup will make the automatic calibration inaccurate too.
+
+### Manually editing the calibration
 
 If you'd like to make a manual change to the calibration, the values are in `openvr_space_calibration.txt` in the same folder as the exe.
 The first 3 numbers are the rotation (yaw, pitch, roll) in degrees, and the next 3 numbers are the translation (x, y, z) in centimeters.
+
+### Compiling your own build
+
+1. Install boost 1.63 to `lib/boost_1_63_0` (required for IPC to OpenVR-InputEmulator). https://sourceforge.net/projects/boost/files/boost-binaries/1.63.0/
+2. Open `OpenVR-SpaceCalibrator.sln` in Visual Studio 2015 and build.
+
 
 ## The math
 
 See [math.pdf](https://github.com/pushrax/OpenVR-SpaceCalibrator/blob/master/math.pdf) for details.
 If you have some ideas for how to improve the calibration process, let me know!
-
-## Compiling your own build
-
-1. Install boost 1.63 to `lib/boost_1_63_0` (required for IPC to OpenVR-InputEmulator). https://sourceforge.net/projects/boost/files/boost-binaries/1.63.0/
-2. Open `OpenVR-SpaceCalibrator.sln` in Visual Studio 2015 and build.
