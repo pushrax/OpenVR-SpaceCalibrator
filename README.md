@@ -21,7 +21,7 @@ Next time you run SteamVR and OpenVR-InputEmulator it will load the calibration 
 ## Manually editing the calibration
 
 If you'd like to make a manual change to the calibration, the values are in `openvr_space_calibration.txt` in the same folder as the exe.
-The first 4 numbers are the rotation (yaw, pitch, roll) in degrees, and the next 3 numbers are the translation (x, y, z) in centimeters.
+The first 3 numbers are the rotation (yaw, pitch, roll) in degrees, and the next 3 numbers are the translation (x, y, z) in centimeters.
 
 ## The math
 
