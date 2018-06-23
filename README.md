@@ -23,7 +23,12 @@ Next time you run SteamVR and OpenVR-InputEmulator it will load the calibration 
 If you'd like to make a manual change to the calibration, the values are in `openvr_space_calibration.txt` in the same folder as the exe.
 The first 4 numbers are the rotation quaternion (w, x, y, z), and the next 3 numbers are the translation (x, y, z).
 
-## The Math
+## The math
 
-See [tracker-calibration.pdf](https://github.com/pushrax/OpenVR-SpaceCalibrator/blob/master/tracker-calibration.pdf) for details.
+See [math.pdf](https://github.com/pushrax/OpenVR-SpaceCalibrator/blob/master/math.pdf) for details.
 If you have some ideas for how to improve the calibration process, let me know!
+
+## Compiling your own build
+
+1. Install boost 1.63 to `lib/boost_1_63_0` (required for IPC to OpenVR-InputEmulator). https://sourceforge.net/projects/boost/files/boost-binaries/1.63.0/
+2. Open `OpenVR-SpaceCalibrator.sln` in Visual Studio 2015 and build.
