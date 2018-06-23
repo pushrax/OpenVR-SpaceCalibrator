@@ -25,8 +25,9 @@ struct CalibrationContext
 	CalibrationState state = None;
 	int referenceID, targetID;
 
-	vr::HmdQuaternion_t calibratedRotation;
-	vr::HmdVector3d_t calibratedTranslation;
+	Eigen::Vector3d calibratedRotation;
+	Eigen::Vector3d calibratedTranslation;
+
 	std::string calibratedTrackingSystem;
 
 	bool profileLoaded = false, validProfile = false;
@@ -151,12 +152,14 @@ bool EndsWith(const std::string &str, const std::string &suffix)
 	return str.compare(str.length() - suffix.length(), suffix.length(), suffix) == 0;
 }
 
-Eigen::Matrix3d CalibrateRotation(const std::vector<Sample> &samples)
+Eigen::Vector3d CalibrateRotation(const std::vector<Sample> &samples)
 {
 	std::vector<DSample> deltas;
 
-	for (size_t i = 0; i < samples.size(); i++) {
-		for (size_t j = 0; j < i; j++) {
+	for (size_t i = 0; i < samples.size(); i++)
+	{
+		for (size_t j = 0; j < i; j++)
+		{
 			auto delta = DeltaRotationSamples(samples[i], samples[j]);
 			if (delta.valid)
 				deltas.push_back(delta);
@@ -169,7 +172,8 @@ Eigen::Matrix3d CalibrateRotation(const std::vector<Sample> &samples)
 	Eigen::MatrixXd refPoints(deltas.size(), 3), targetPoints(deltas.size(), 3);
 	Eigen::Vector3d refCentroid(0,0,0), targetCentroid(0,0,0);
 
-	for (size_t i = 0; i < deltas.size(); i++) {
+	for (size_t i = 0; i < deltas.size(); i++)
+	{
 		refPoints.row(i) = deltas[i].ref;
 		refCentroid += deltas[i].ref;
 
@@ -180,7 +184,8 @@ Eigen::Matrix3d CalibrateRotation(const std::vector<Sample> &samples)
 	refCentroid /= (double) deltas.size();
 	targetCentroid /= (double) deltas.size();
 
-	for (size_t i = 0; i < deltas.size(); i++) {
+	for (size_t i = 0; i < deltas.size(); i++)
+	{
 		refPoints.row(i) -= refCentroid;
 		targetPoints.row(i) -= targetCentroid;
 	}
@@ -191,7 +196,8 @@ Eigen::Matrix3d CalibrateRotation(const std::vector<Sample> &samples)
 	auto svd = bdcsvd.compute(crossCV, Eigen::ComputeThinU | Eigen::ComputeThinV);
 
 	Eigen::Matrix3d i = Eigen::Matrix3d::Identity();
-	if ((svd.matrixU() * svd.matrixV().transpose()).determinant() < 0) {
+	if ((svd.matrixU() * svd.matrixV().transpose()).determinant() < 0)
+	{
 		i(2,2) = -1;
 	}
 
@@ -199,16 +205,20 @@ Eigen::Matrix3d CalibrateRotation(const std::vector<Sample> &samples)
 	rot.transposeInPlace();
 
 	Eigen::Vector3d euler = rot.eulerAngles(2, 1, 0) * 180.0 / EIGEN_PI;
-	printf("rotation yaw=%.2f pitch=%.2f roll=%.2f\n", euler[1], euler[0], euler[2]);
-	return rot;
+	euler[2] *= -1;
+
+	printf("rotation yaw=%.2f pitch=%.2f roll=%.2f\n", euler[1], euler[2], euler[0]);
+	return euler;
 }
 
 Eigen::Vector3d CalibrateTranslation(const std::vector<Sample> &samples)
 {
 	std::vector<std::pair<Eigen::Vector3d, Eigen::Matrix3d>> deltas;
 
-	for (size_t i = 0; i < samples.size(); i++) {
-		for (size_t j = 0; j < i; j++) {
+	for (size_t i = 0; i < samples.size(); i++)
+	{
+		for (size_t j = 0; j < i; j++)
+		{
 			auto QAi = samples[i].ref.rot.transpose();
 			auto QAj = samples[j].ref.rot.transpose();
 			auto dQA = QAj - QAi;
@@ -226,19 +236,21 @@ Eigen::Vector3d CalibrateTranslation(const std::vector<Sample> &samples)
 	Eigen::VectorXd constants(deltas.size() * 3);
 	Eigen::MatrixXd coefficients(deltas.size() * 3, 3);
 
-	for (size_t i = 0; i < deltas.size(); i++) {
-		for (int axis = 0; axis < 3; axis++) {
+	for (size_t i = 0; i < deltas.size(); i++)
+	{
+		for (int axis = 0; axis < 3; axis++)
+		{
 			constants(i * 3 + axis) = deltas[i].first(axis);
 			coefficients.row(i * 3 + axis) = deltas[i].second.row(axis);
 		}
 	}
 
 	Eigen::Vector3d trans = coefficients.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(constants);
-	trans(0) *= -1;
+	trans(0) *= -1.0;
 	auto transcm = trans * 100.0;
 
 	printf("\ntranslation x=%.2f y=%.2f z=%.2f\n", transcm[0], transcm[1], transcm[2]);
-	return trans;
+	return transcm;
 }
 
 Sample CollectSample(const CalibrationContext &ctx)
@@ -334,13 +346,12 @@ void LoadProfile(CalibrationContext &ctx)
 
 	file
 		>> ctx.calibratedTrackingSystem
-		>> ctx.calibratedRotation.w
-		>> ctx.calibratedRotation.x
-		>> ctx.calibratedRotation.y
-		>> ctx.calibratedRotation.z
-		>> ctx.calibratedTranslation.v[0]
-		>> ctx.calibratedTranslation.v[1]
-		>> ctx.calibratedTranslation.v[2];
+		>> ctx.calibratedRotation(1) // yaw
+		>> ctx.calibratedRotation(2) // pitch
+		>> ctx.calibratedRotation(0) // roll
+		>> ctx.calibratedTranslation(0) // x
+		>> ctx.calibratedTranslation(1) // y
+		>> ctx.calibratedTranslation(2); // z
 
 	ctx.validProfile = true;
 }
@@ -352,16 +363,42 @@ void SaveProfile(CalibrationContext &ctx)
 	file
 		<< ctx.calibratedTrackingSystem << std::endl
 		<< std::setprecision(std::numeric_limits<double>::digits10 + 1)
-		<< ctx.calibratedRotation.w << " "
-		<< ctx.calibratedRotation.x << " "
-		<< ctx.calibratedRotation.y << " "
-		<< ctx.calibratedRotation.z << std::endl
-		<< ctx.calibratedTranslation.v[0] << " "
-		<< ctx.calibratedTranslation.v[1] << " "
-		<< ctx.calibratedTranslation.v[2] << std::endl;
+		<< ctx.calibratedRotation(1) << " " // yaw
+		<< ctx.calibratedRotation(2) << " " // pitch
+		<< ctx.calibratedRotation(0) << std::endl // roll
+		<< ctx.calibratedTranslation(0) << " " // x
+		<< ctx.calibratedTranslation(1) << " " // y
+		<< ctx.calibratedTranslation(2) << std::endl; //z
 
 	ctx.profileLoaded = true;
 	ctx.validProfile = true;
+}
+
+vr::HmdQuaternion_t VRRotationQuat(Eigen::Vector3d eulerdeg)
+{
+	auto euler = eulerdeg * EIGEN_PI / 180.0;
+
+	Eigen::Quaterniond rotQuat =
+		Eigen::AngleAxisd(euler(0), Eigen::Vector3d::UnitZ()) *
+		Eigen::AngleAxisd(euler(1), Eigen::Vector3d::UnitY()) *
+		Eigen::AngleAxisd(euler(2), Eigen::Vector3d::UnitX());
+
+	vr::HmdQuaternion_t vrRotQuat;
+	vrRotQuat.x = rotQuat.coeffs()[0];
+	vrRotQuat.y = rotQuat.coeffs()[1];
+	vrRotQuat.z = rotQuat.coeffs()[2];
+	vrRotQuat.w = rotQuat.coeffs()[3];
+	return vrRotQuat;
+}
+
+vr::HmdVector3d_t VRTranslationVec(Eigen::Vector3d transcm)
+{
+	auto trans = transcm * 0.01;
+	vr::HmdVector3d_t vrTrans;
+	vrTrans.v[0] = trans[0];
+	vrTrans.v[1] = trans[1];
+	vrTrans.v[2] = trans[2];
+	return vrTrans;
 }
 
 void ScanAndApplyProfile(const CalibrationContext &ctx)
@@ -384,8 +421,12 @@ void ScanAndApplyProfile(const CalibrationContext &ctx)
 			if (trackingSystem == ctx.calibratedTrackingSystem)
 			{
 				//printf("setting calibration for %d (%s)\n", id, buffer);
-				InputEmulator.setWorldFromDriverRotationOffset(id, ctx.calibratedRotation);
-				InputEmulator.setWorldFromDriverTranslationOffset(id, ctx.calibratedTranslation);
+				auto vrRotQuat = VRRotationQuat(ctx.calibratedRotation);
+				InputEmulator.setWorldFromDriverRotationOffset(id, vrRotQuat);
+
+				auto vrTransVec = VRTranslationVec(ctx.calibratedTranslation);
+				InputEmulator.setWorldFromDriverTranslationOffset(id, vrTransVec);
+
 				InputEmulator.enableDeviceOffsets(id, true);
 			}
 		}
@@ -459,37 +500,25 @@ void CalibrationTick()
 	{
 		if (ctx.state == Rotation)
 		{
-			auto rot = CalibrateRotation(samples);
-			Eigen::Quaterniond rotQuat(rot);
+			ctx.calibratedRotation = CalibrateRotation(samples);
 
-			vr::HmdQuaternion_t vrRotQuat;
-			vrRotQuat.x = rotQuat.coeffs()[0];
-			vrRotQuat.y = rotQuat.coeffs()[1];
-			vrRotQuat.z = rotQuat.coeffs()[2];
-			vrRotQuat.w = rotQuat.coeffs()[3];
-
+			auto vrRotQuat = VRRotationQuat(ctx.calibratedRotation);
 			InputEmulator.setWorldFromDriverRotationOffset(ctx.targetID, vrRotQuat);
 			InputEmulator.enableDeviceOffsets(ctx.targetID, true);
 
-			ctx.calibratedRotation = vrRotQuat;
 			ctx.state = Translation;
 		}
 		else if (ctx.state == Translation)
 		{
-			auto trans = CalibrateTranslation(samples);
+			ctx.calibratedTranslation = CalibrateTranslation(samples);
 
-			vr::HmdVector3d_t vrTrans;
-			vrTrans.v[0] = trans[0];
-			vrTrans.v[1] = trans[1];
-			vrTrans.v[2] = trans[2];
-
+			auto vrTrans = VRTranslationVec(ctx.calibratedTranslation);
 			InputEmulator.setWorldFromDriverTranslationOffset(ctx.targetID, vrTrans);
-
-			ctx.calibratedTranslation = vrTrans;
-			ctx.state = None;
 
 			SaveProfile(ctx);
 			printf("finished calibration, profile saved\n");
+
+			ctx.state = None;
 		}
 
 		samples.clear();
