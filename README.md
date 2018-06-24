@@ -2,7 +2,7 @@
 
 Use VR devices from one company with any other.
 
-This is **beta software** and may not work for you. A quick video demo is available at https://www.youtube.com/watch?v=W3TnQd9JMl4
+This is **beta software** and may not work for you. A quick video walkthrough of the calibration process is available at https://www.youtube.com/watch?v=W3TnQd9JMl4
 
 ## Usage
 
@@ -28,7 +28,7 @@ Every hardware designer with their own tracking system needs to make a "driver"
 so SteamVR can see their tracking data. SteamVR by default will load only one driver at a time,
 but we can tell it to load all of them by editing the vrsettings config file.
 
-Open `steam\steamapps\common\SteamVR\resources\settings\default.vrsettings` in a text editor,
+Open `Steam\steamapps\common\SteamVR\resources\settings\default.vrsettings` in a text editor,
 look for the line that has `"activateMultipleDrivers": false` and change the `false` to `true`.
 In some guides online you may also see references to `requireHmd`, this does _not_ need to be changed
 unless you truly want to be able to run without any kind of HMD.
@@ -38,6 +38,13 @@ have to edit the config again.
 
 Make sure to run room setup in your HMD's software (e.g. Oculus) and also in SteamVR.
 An inaccurate room setup will make the automatic calibration inaccurate too.
+If you're getting a calibration that's a bit off, you may need to delete your existing
+room setup to force SteamVR to stop using it. This can be done by deleting:
+
+- `Steam\config\chaperone_info.vrchap`
+- `Steam\config\lighthouse`
+
+and then you can open SteamVR and run a fresh room setup.
 
 ### Manually editing the calibration
 
