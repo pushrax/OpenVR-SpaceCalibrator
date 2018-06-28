@@ -13,7 +13,6 @@ If you don't already run a setup with multiple device types, see [Setting up Ste
 0. Install [OpenVR-InputEmulator](https://github.com/matzman666/OpenVR-InputEmulator).
 1. Download and unzip the [latest release](https://github.com/pushrax/OpenVR-SpaceCalibrator/releases) of OpenVR-SpaceCalibrator.
 2. Run SteamVR, and turn on your Touch controllers and only one Vive device to use for calibration.
-    * Make sure your SteamVR and Oculus room setups are correct. If a lighthouse or sensor has moved since your last room setup, the calibration won't be calculated properly.
 3. Run OpenVR-SpaceCalibrator.
 4. Hold the left Touch controller and your Vive device in your left hand securely, like they're glued together.
 5. Click "Start Calibration"
@@ -35,16 +34,6 @@ unless you truly want to be able to run without any kind of HMD.
 
 Sometimes when SteamVR updates this file seems to get wiped, if your setup stops working you might
 have to edit the config again.
-
-Make sure to run room setup in your HMD's software (e.g. Oculus) and also in SteamVR.
-An inaccurate room setup will make the automatic calibration inaccurate too.
-If you're getting a calibration that's a bit off, you may need to delete your existing
-room setup to force SteamVR to stop using it. This can be done by deleting:
-
-- `Steam\config\chaperone_info.vrchap`
-- `Steam\config\lighthouse`
-
-and then you can open SteamVR and run a fresh room setup.
 
 ### Manually editing the calibration
 
