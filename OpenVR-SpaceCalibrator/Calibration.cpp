@@ -257,7 +257,7 @@ Sample CollectSample(const CalibrationContext &ctx)
 	reference.bPoseIsValid = false;
 	target.bPoseIsValid = false;
 
-	vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(vr::TrackingUniverseStanding, 0.0f, devicePoses, vr::k_unMaxTrackedDeviceCount);
+	vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(vr::TrackingUniverseRawAndUncalibrated, 0.0f, devicePoses, vr::k_unMaxTrackedDeviceCount);
 
 	reference = devicePoses[ctx.referenceID];
 	target = devicePoses[ctx.targetID];
@@ -279,7 +279,7 @@ bool PickDevices(CalibrationContext &ctx)
 	char buffer[vr::k_unMaxPropertyStringSize];
 
 	vr::TrackedDevicePose_t devicePoses[vr::k_unMaxTrackedDeviceCount];
-	vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(vr::TrackingUniverseStanding, 0.0f, devicePoses, vr::k_unMaxTrackedDeviceCount);
+	vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(vr::TrackingUniverseRawAndUncalibrated, 0.0f, devicePoses, vr::k_unMaxTrackedDeviceCount);
 
 	for (uint32_t id = 0; id < vr::k_unMaxTrackedDeviceCount; ++id)
 	{
@@ -403,30 +403,50 @@ void ScanAndApplyProfile(const CalibrationContext &ctx)
 {
 	char buffer[vr::k_unMaxPropertyStringSize];
 
+	vr::TrackedDevicePose_t devicePoses[vr::k_unMaxTrackedDeviceCount];
+	vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(vr::TrackingUniverseRawAndUncalibrated, 0.0f, devicePoses, vr::k_unMaxTrackedDeviceCount);
+
 	for (uint32_t id = 0; id < vr::k_unMaxTrackedDeviceCount; ++id)
 	{
 		auto deviceClass = vr::VRSystem()->GetTrackedDeviceClass(id);
 		if (deviceClass == vr::TrackedDeviceClass_Invalid)
 			continue;
 
+		/*if (deviceClass == vr::TrackedDeviceClass_HMD) // for debugging unexpected universe switches
+		{
+			vr::ETrackedPropertyError err = vr::TrackedProp_Success;
+			auto universeId = vr::VRSystem()->GetUint64TrackedDeviceProperty(id, vr::Prop_CurrentUniverseId_Uint64, &err);
+			printf("uid %d err %d\n", universeId, err);
+			continue;
+		}*/
+
 		vr::ETrackedPropertyError err = vr::TrackedProp_Success;
 		vr::VRSystem()->GetStringTrackedDeviceProperty(id, vr::Prop_TrackingSystemName_String, buffer, vr::k_unMaxPropertyStringSize, &err);
 
-		if (err == vr::TrackedProp_Success)
+		if (err != vr::TrackedProp_Success)
+			continue;
+
+		std::string trackingSystem(buffer);
+
+		if (trackingSystem != ctx.calibratedTrackingSystem)
+			continue;
+
+		if (deviceClass == vr::TrackedDeviceClass_TrackingReference)
 		{
-			std::string trackingSystem(buffer);
+			// TODO(pushrax): detect zero reference switches and adjust calibration automatically
+			//auto p = devicePoses[id].mDeviceToAbsoluteTracking.m;
+			//printf("%d: %f %f %f\n", id, p[0][3], p[1][3], p[2][3]);
+		}
+		else
+		{
+			//printf("setting calibration for %d (%s)\n", id, buffer);
+			auto vrRotQuat = VRRotationQuat(ctx.calibratedRotation);
+			InputEmulator.setWorldFromDriverRotationOffset(id, vrRotQuat);
 
-			if (trackingSystem == ctx.calibratedTrackingSystem)
-			{
-				//printf("setting calibration for %d (%s)\n", id, buffer);
-				auto vrRotQuat = VRRotationQuat(ctx.calibratedRotation);
-				InputEmulator.setWorldFromDriverRotationOffset(id, vrRotQuat);
+			auto vrTransVec = VRTranslationVec(ctx.calibratedTranslation);
+			InputEmulator.setWorldFromDriverTranslationOffset(id, vrTransVec);
 
-				auto vrTransVec = VRTranslationVec(ctx.calibratedTranslation);
-				InputEmulator.setWorldFromDriverTranslationOffset(id, vrTransVec);
-
-				InputEmulator.enableDeviceOffsets(id, true);
-			}
+			InputEmulator.enableDeviceOffsets(id, true);
 		}
 	}
 }
