@@ -92,11 +92,11 @@
     <ClInclude Include="..\lib\lib_vrinputemulator\vrinputemulator.h" />
     <ClInclude Include="..\lib\lib_vrinputemulator\vrinputemulator_types.h" />
     <ClInclude Include="Calibration.h" />
+    <ClInclude Include="Configuration.h" />
     <ClInclude Include="EmbeddedFiles.h" />
-    <ClInclude Include="OpenVR-SpaceCalibrator.h" />
-    <ClInclude Include="Resource.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
+    <ClInclude Include="UserInterface.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\lib\gl3w\src\gl3w.c">
@@ -122,6 +122,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="Calibration.cpp" />
+    <ClCompile Include="Configuration.cpp" />
     <ClCompile Include="EmbeddedFiles.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
@@ -130,13 +131,14 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <ResourceCompile Include="OpenVR-SpaceCalibrator.rc" />
+    <ClCompile Include="UserInterface.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="OpenVR-SpaceCalibrator.ico" />
     <Image Include="small.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="OpenVR-SpaceCalibrator.rc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

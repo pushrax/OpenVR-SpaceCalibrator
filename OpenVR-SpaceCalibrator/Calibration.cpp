@@ -1,75 +1,38 @@
 #include "stdafx.h"
 #include "Calibration.h"
+#include "Configuration.h"
 
 #include <string>
 #include <vector>
 #include <iostream>
-#include <fstream>
-#include <limits>
-#include <iomanip>
 
 #include <lib_vrinputemulator/vrinputemulator.h>
-#include <openvr.h>
 #include <Eigen/Dense>
-
-enum CalibrationState
-{
-	None,
-	Begin,
-	Rotation,
-	Translation,
-};
-
-struct CalibrationContext
-{
-	CalibrationState state = None;
-	int referenceID, targetID;
-
-	Eigen::Vector3d calibratedRotation;
-	Eigen::Vector3d calibratedTranslation;
-
-	std::string calibratedTrackingSystem;
-
-	bool profileLoaded = false, validProfile = false;
-	int ticksSinceScan = 0;
-};
 
 
 static vrinputemulator::VRInputEmulator InputEmulator;
-static CalibrationContext CalCtx;
+CalibrationContext CalCtx;
 
-void StartCalibration()
-{
-	CalCtx.state = Begin;
-}
-
-bool InitVR()
+void InitVR()
 {
 	auto initError = vr::VRInitError_None;
 	vr::VR_Init(&initError, vr::VRApplication_Other);
 	if (initError != vr::VRInitError_None)
 	{
 		auto error = vr::VR_GetVRInitErrorAsEnglishDescription(initError);
-		std::cerr << "OpenVR error: " << error << std::endl;
-		wchar_t message[1024];
-		swprintf(message, 1024, L"%hs", error);
-		MessageBox(nullptr, message, L"Failed to initialize OpenVR", 0);
-		return false;
+		throw std::runtime_error("OpenVR error:" + std::string(error));
 	}
 
 	if (!vr::VR_IsInterfaceVersionValid(vr::IVRSystem_Version))
 	{
-		MessageBox(nullptr, L"Outdated IVRSystem_Version", L"Failed to initialize OpenVR", 0);
-		return false;
+		throw std::runtime_error("OpenVR error: Outdated IVRSystem_Version");
 	}
 	else if (!vr::VR_IsInterfaceVersionValid(vr::IVRSettings_Version))
 	{
-		MessageBox(nullptr, L"Outdated IVRSettings_Version", L"Failed to initialize OpenVR", 0);
-		return false;
+		throw std::runtime_error("OpenVR error: Outdated IVRSettings_Version");
 	}
 
 	InputEmulator.connect();
-	return true;
 }
 
 struct Pose
@@ -165,7 +128,9 @@ Eigen::Vector3d CalibrateRotation(const std::vector<Sample> &samples)
 				deltas.push_back(delta);
 		}
 	}
-	printf("got %zd samples with %zd delta samples\n", samples.size(), deltas.size());
+	char buf[256];
+	snprintf(buf, sizeof buf, "Got %zd samples with %zd delta samples\n", samples.size(), deltas.size());
+	CalCtx.Message(buf);
 
 	// Kabsch algorithm
 
@@ -206,7 +171,8 @@ Eigen::Vector3d CalibrateRotation(const std::vector<Sample> &samples)
 
 	Eigen::Vector3d euler = rot.eulerAngles(2, 1, 0) * 180.0 / EIGEN_PI;
 
-	printf("rotation yaw=%.2f pitch=%.2f roll=%.2f\n", euler[1], euler[2], euler[0]);
+	snprintf(buf, sizeof buf, "Calibrated rotation: yaw=%.2f pitch=%.2f roll=%.2f\n", euler[1], euler[2], euler[0]);
+	CalCtx.Message(buf);
 	return euler;
 }
 
@@ -247,24 +213,34 @@ Eigen::Vector3d CalibrateTranslation(const std::vector<Sample> &samples)
 	Eigen::Vector3d trans = coefficients.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(constants);
 	auto transcm = trans * 100.0;
 
-	printf("translation x=%.2f y=%.2f z=%.2f\n", transcm[0], transcm[1], transcm[2]);
+	char buf[256];
+	snprintf(buf, sizeof buf, "Calibrated translation x=%.2f y=%.2f z=%.2f\n", transcm[0], transcm[1], transcm[2]);
+	CalCtx.Message(buf);
 	return transcm;
 }
 
 Sample CollectSample(const CalibrationContext &ctx)
 {
-	vr::TrackedDevicePose_t devicePoses[vr::k_unMaxTrackedDeviceCount], reference, target;
+	vr::TrackedDevicePose_t reference, target;
 	reference.bPoseIsValid = false;
 	target.bPoseIsValid = false;
 
-	vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(vr::TrackingUniverseRawAndUncalibrated, 0.0f, devicePoses, vr::k_unMaxTrackedDeviceCount);
+	reference = ctx.devicePoses[ctx.referenceID];
+	target = ctx.devicePoses[ctx.targetID];
 
-	reference = devicePoses[ctx.referenceID];
-	target = devicePoses[ctx.targetID];
-
-	if (!reference.bPoseIsValid || !target.bPoseIsValid)
+	bool ok = true;
+	if (!reference.bPoseIsValid)
 	{
-		printf("invalid pose for:%s%s\n", reference.bPoseIsValid ? "" : " <left controller>", target.bPoseIsValid ? "" : " <vive tracker>");
+		CalCtx.Message("Reference device is not tracking\n"); ok = false;
+	}
+	if (!target.bPoseIsValid)
+	{
+		CalCtx.Message("Target device is not tracking\n"); ok = false;
+	}
+	if (!ok)
+	{
+		CalCtx.Message("Aborting calibration!\n");
+		CalCtx.state = CalibrationState::None;
 		return Sample();
 	}
 
@@ -272,104 +248,6 @@ Sample CollectSample(const CalibrationContext &ctx)
 		Pose(reference.mDeviceToAbsoluteTracking),
 		Pose(target.mDeviceToAbsoluteTracking)
 	);
-}
-
-bool PickDevices(CalibrationContext &ctx)
-{
-	char buffer[vr::k_unMaxPropertyStringSize];
-
-	vr::TrackedDevicePose_t devicePoses[vr::k_unMaxTrackedDeviceCount];
-	vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(vr::TrackingUniverseRawAndUncalibrated, 0.0f, devicePoses, vr::k_unMaxTrackedDeviceCount);
-
-	for (uint32_t id = 0; id < vr::k_unMaxTrackedDeviceCount; ++id)
-	{
-		auto deviceClass = vr::VRSystem()->GetTrackedDeviceClass(id);
-		if (deviceClass == vr::TrackedDeviceClass_Invalid)
-			continue;
-
-		if (devicePoses[id].bPoseIsValid)
-		{
-			vr::ETrackedPropertyError err = vr::TrackedProp_Success;
-			vr::VRSystem()->GetStringTrackedDeviceProperty(id, vr::Prop_SerialNumber_String, buffer, vr::k_unMaxPropertyStringSize, &err);
-
-			if (err == vr::TrackedProp_Success)
-			{
-				std::string serial(buffer);
-				//printf("got valid pose for id=%d serial=%s\n", id, serial.c_str());
-
-				if (EndsWith(serial, "_Controller_Left"))
-				{
-					ctx.referenceID = id;
-				}
-				else if (StartsWith(serial, "LHR-"))
-				{
-					ctx.targetID = id;
-
-					vr::VRSystem()->GetStringTrackedDeviceProperty(id, vr::Prop_TrackingSystemName_String, buffer, vr::k_unMaxPropertyStringSize, &err);
-
-					if (err == vr::TrackedProp_Success)
-					{
-						ctx.calibratedTrackingSystem = std::string(buffer);
-					}
-					else
-					{
-						printf("failed to get tracking system name for %s\n", serial.c_str());
-						return false;
-					}
-				}
-			}
-			else
-			{
-				//printf("got valid pose for id=%d serial=<unknown>\n", id);
-			}
-		}
-	}
-
-	if (ctx.referenceID == -1 || ctx.targetID == -1)
-	{
-		printf("missing devices:%s%s\n", ctx.referenceID == -1 ? "" : " <left controller>", ctx.targetID == -1 ? "" : " <vive tracker>");
-		return false;
-	}
-	return true;
-}
-
-void LoadProfile(CalibrationContext &ctx)
-{
-	std::ifstream file("openvr_space_calibration.txt");
-	ctx.profileLoaded = true;
-	ctx.validProfile = false;
-
-	if (!file.good())
-		return;
-
-	file
-		>> ctx.calibratedTrackingSystem
-		>> ctx.calibratedRotation(1) // yaw
-		>> ctx.calibratedRotation(2) // pitch
-		>> ctx.calibratedRotation(0) // roll
-		>> ctx.calibratedTranslation(0) // x
-		>> ctx.calibratedTranslation(1) // y
-		>> ctx.calibratedTranslation(2); // z
-
-	ctx.validProfile = true;
-}
-
-void SaveProfile(CalibrationContext &ctx)
-{
-	std::ofstream file("openvr_space_calibration.txt");
-
-	file
-		<< ctx.calibratedTrackingSystem << std::endl
-		<< std::setprecision(std::numeric_limits<double>::digits10 + 1)
-		<< ctx.calibratedRotation(1) << " " // yaw
-		<< ctx.calibratedRotation(2) << " " // pitch
-		<< ctx.calibratedRotation(0) << std::endl // roll
-		<< ctx.calibratedTranslation(0) << " " // x
-		<< ctx.calibratedTranslation(1) << " " // y
-		<< ctx.calibratedTranslation(2) << std::endl; //z
-
-	ctx.profileLoaded = true;
-	ctx.validProfile = true;
 }
 
 vr::HmdQuaternion_t VRRotationQuat(Eigen::Vector3d eulerdeg)
@@ -399,12 +277,9 @@ vr::HmdVector3d_t VRTranslationVec(Eigen::Vector3d transcm)
 	return vrTrans;
 }
 
-void ScanAndApplyProfile(const CalibrationContext &ctx)
+void ScanAndApplyProfile(CalibrationContext &ctx)
 {
 	char buffer[vr::k_unMaxPropertyStringSize];
-
-	vr::TrackedDevicePose_t devicePoses[vr::k_unMaxTrackedDeviceCount];
-	vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(vr::TrackingUniverseRawAndUncalibrated, 0.0f, devicePoses, vr::k_unMaxTrackedDeviceCount);
 
 	for (uint32_t id = 0; id < vr::k_unMaxTrackedDeviceCount; ++id)
 	{
@@ -428,14 +303,14 @@ void ScanAndApplyProfile(const CalibrationContext &ctx)
 
 		std::string trackingSystem(buffer);
 
-		if (trackingSystem != ctx.calibratedTrackingSystem)
+		if (trackingSystem != ctx.targetTrackingSystem)
 			continue;
 
-		if (deviceClass == vr::TrackedDeviceClass_TrackingReference)
+		if (deviceClass == vr::TrackedDeviceClass_TrackingReference || deviceClass == vr::TrackedDeviceClass_HMD)
 		{
 			// TODO(pushrax): detect zero reference switches and adjust calibration automatically
-			//auto p = devicePoses[id].mDeviceToAbsoluteTracking.m;
-			//printf("%d: %f %f %f\n", id, p[0][3], p[1][3], p[2][3]);
+			//auto p = ctx.devicePoses[id].mDeviceToAbsoluteTracking.m;
+			//printf("REF %d: %f %f %f\n", id, p[0][3], p[1][3], p[2][3]);
 		}
 		else
 		{
@@ -464,42 +339,87 @@ void ResetAndDisableOffsets(uint32_t id)
 	InputEmulator.enableDeviceOffsets(id, false);
 }
 
-void CalibrationTick()
+void StartCalibration()
+{
+	CalCtx.state = CalibrationState::Begin;
+	CalCtx.wantedUpdateInterval = 0.0;
+	CalCtx.messages = "";
+}
+
+void CalibrationTick(double time)
 {
 	if (!vr::VRSystem())
 		return;
 
 	auto &ctx = CalCtx;
+	if ((time - ctx.timeLastTick) < 0.05)
+		return;
 
-	if (ctx.state == None)
+	ctx.timeLastTick = time;
+	vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(vr::TrackingUniverseRawAndUncalibrated, 0.0f, ctx.devicePoses, vr::k_unMaxTrackedDeviceCount);
+
+	if (ctx.state == CalibrationState::None)
 	{
-		if (!ctx.profileLoaded)
-		{
-			LoadProfile(ctx);
-		}
-		else if (!ctx.validProfile)
-		{
-			return;
-		}
+		ctx.wantedUpdateInterval = 1.0;
 
-		if (ctx.ticksSinceScan == 0)
+		if (!ctx.validProfile)
+			return;
+
+		if ((time - ctx.timeLastScan) >= 2.5)
 		{
 			ScanAndApplyProfile(ctx);
+			ctx.timeLastScan = time;
 		}
-		ctx.ticksSinceScan = (ctx.ticksSinceScan + 1) % 40;
 		return;
 	}
 
-	if (ctx.state == Begin)
+	if (ctx.state == CalibrationState::Editing)
 	{
-		ctx.referenceID = -1;
-		ctx.targetID = -1;
-		if (PickDevices(ctx))
+		ctx.wantedUpdateInterval = 0.0;
+
+		if (!ctx.validProfile)
+			return;
+
+		ScanAndApplyProfile(ctx);
+		return;
+	}
+
+	if (ctx.state == CalibrationState::Begin)
+	{
+		bool ok = true;
+
+		if (ctx.referenceID == -1)
 		{
-			ResetAndDisableOffsets(ctx.targetID);
-			ctx.state = Rotation;
-			printf("starting calibration, referenceID=%d targetID=%d\n", ctx.referenceID, ctx.targetID);
+			CalCtx.Message("Missing reference device\n"); ok = false;
 		}
+		else if (!ctx.devicePoses[ctx.referenceID].bPoseIsValid)
+		{
+			CalCtx.Message("Reference device is not tracking\n"); ok = false;
+		}
+
+		if (ctx.targetID == -1)
+		{
+			CalCtx.Message("Missing target device\n"); ok = false;
+		}
+		else if (!ctx.devicePoses[ctx.targetID].bPoseIsValid)
+		{
+			CalCtx.Message("Target device is not tracking\n"); ok = false;
+		}
+
+		if (!ok)
+		{
+			ctx.state = CalibrationState::None;
+			CalCtx.Message("Aborting calibration!\n");
+			return;
+		}
+
+		ResetAndDisableOffsets(ctx.targetID);
+		ctx.state = CalibrationState::Rotation;
+		ctx.wantedUpdateInterval = 0.0;
+
+		char buf[256];
+		snprintf(buf, sizeof buf, "Starting calibration, referenceID=%d targetID=%d\n", ctx.referenceID, ctx.targetID);
+		CalCtx.Message(buf);
 		return;
 	}
 
@@ -508,7 +428,7 @@ void CalibrationTick()
 	{
 		return;
 	}
-	printf(".");
+	CalCtx.Message(".");
 
 	const int totalSamples = 100;
 	static std::vector<Sample> samples;
@@ -516,8 +436,8 @@ void CalibrationTick()
 
 	if (samples.size() == totalSamples)
 	{
-		printf("\n");
-		if (ctx.state == Rotation)
+		CalCtx.Message("\n");
+		if (ctx.state == CalibrationState::Rotation)
 		{
 			ctx.calibratedRotation = CalibrateRotation(samples);
 
@@ -525,9 +445,9 @@ void CalibrationTick()
 			InputEmulator.setWorldFromDriverRotationOffset(ctx.targetID, vrRotQuat);
 			InputEmulator.enableDeviceOffsets(ctx.targetID, true);
 
-			ctx.state = Translation;
+			ctx.state = CalibrationState::Translation;
 		}
-		else if (ctx.state == Translation)
+		else if (ctx.state == CalibrationState::Translation)
 		{
 			ctx.calibratedTranslation = CalibrateTranslation(samples);
 
@@ -535,9 +455,9 @@ void CalibrationTick()
 			InputEmulator.setWorldFromDriverTranslationOffset(ctx.targetID, vrTrans);
 
 			SaveProfile(ctx);
-			printf("finished calibration, profile saved\n");
+			CalCtx.Message("Finished calibration, profile saved\n");
 
-			ctx.state = None;
+			ctx.state = CalibrationState::None;
 		}
 
 		samples.clear();
