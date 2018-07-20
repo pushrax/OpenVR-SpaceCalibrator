@@ -38,8 +38,7 @@ have to edit the config again.
 
 ### Compiling your own build
 
-1. Install boost 1.63 to `lib/boost_1_63_0` (required for IPC to OpenVR-InputEmulator). https://sourceforge.net/projects/boost/files/boost-binaries/1.63.0/
-2. Open `OpenVR-SpaceCalibrator.sln` in Visual Studio 2015 and build.
+1. Open `OpenVR-SpaceCalibrator.sln` in Visual Studio 2015 and build.
 
 
 ## The math

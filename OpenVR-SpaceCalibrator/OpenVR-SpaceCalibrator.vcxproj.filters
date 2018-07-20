@@ -30,15 +30,6 @@
     <ClInclude Include="Calibration.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\lib\lib_vrinputemulator\ipc_protocol.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\lib\lib_vrinputemulator\vrinputemulator.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\lib\lib_vrinputemulator\vrinputemulator_types.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="EmbeddedFiles.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -60,9 +51,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Calibration.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\lib\lib_vrinputemulator\vrinputemulator.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\lib\imgui\imgui.cpp">
