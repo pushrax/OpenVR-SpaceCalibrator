@@ -10,7 +10,6 @@ This is **beta software** and may not work for you. A quick video walkthrough of
 
 If you don't already run a setup with multiple device types, see [Setting up SteamVR](#setting-up-steamvr).
 
-0. Install [OpenVR-InputEmulator](https://github.com/matzman666/OpenVR-InputEmulator).
 1. Download and unzip the [latest release](https://github.com/pushrax/OpenVR-SpaceCalibrator/releases) of OpenVR-SpaceCalibrator.
 2. Run SteamVR, and turn on your Touch controllers and only one Vive device to use for calibration.
 3. Run OpenVR-SpaceCalibrator.
@@ -19,7 +18,8 @@ If you don't already run a setup with multiple device types, see [Setting up Ste
 6. Wave your left hand around, like you're calibrating the compass on your phone. You want to get as many orientations as possible.
 7. Done! A profile will be saved automatically. You can turn on the rest of your Vive devices now.
 
-Next time you run SteamVR and OpenVR-InputEmulator it will load the calibration automatically and apply it to any Vive devices you turn on.
+Next time you run SteamVR, open OpenVR-SpaceCalibrator and it will load the calibration automatically and apply it devices you turn on.
+
 
 ### Setting up SteamVR
 
@@ -35,10 +35,6 @@ unless you truly want to be able to run without any kind of HMD.
 Sometimes when SteamVR updates this file seems to get wiped, if your setup stops working you might
 have to edit the config again.
 
-### Manually editing the calibration
-
-If you'd like to make a manual change to the calibration, the values are in `openvr_space_calibration.txt` in the same folder as the exe.
-The first 3 numbers are the rotation (yaw, pitch, roll) in degrees, and the next 3 numbers are the translation (x, y, z) in centimeters.
 
 ### Compiling your own build
 

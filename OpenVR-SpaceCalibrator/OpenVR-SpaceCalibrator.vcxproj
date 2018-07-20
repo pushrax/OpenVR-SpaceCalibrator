@@ -85,15 +85,13 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <Text Include="ReadMe.txt" />
-  </ItemGroup>
-  <ItemGroup>
     <ClInclude Include="..\lib\lib_vrinputemulator\ipc_protocol.h" />
     <ClInclude Include="..\lib\lib_vrinputemulator\vrinputemulator.h" />
     <ClInclude Include="..\lib\lib_vrinputemulator\vrinputemulator_types.h" />
     <ClInclude Include="Calibration.h" />
     <ClInclude Include="Configuration.h" />
     <ClInclude Include="EmbeddedFiles.h" />
+    <ClInclude Include="IPCClient.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
     <ClInclude Include="UserInterface.h" />
@@ -126,6 +124,7 @@
     <ClCompile Include="EmbeddedFiles.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="IPCClient.cpp" />
     <ClCompile Include="OpenVR-SpaceCalibrator.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>

@@ -5,6 +5,8 @@ VisualStudioVersion = 14.0.25420.1
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "OpenVR-SpaceCalibrator", "OpenVR-SpaceCalibrator\OpenVR-SpaceCalibrator.vcxproj", "{63BAE169-D595-4464-8E7E-50D6FD379348}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "OpenVR-SpaceCalibratorDriver", "OpenVR-SpaceCalibratorDriver\OpenVR-SpaceCalibratorDriver.vcxproj", "{A61324AD-CE32-46D1-A95E-7E28A6D8CCA7}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -15,6 +17,10 @@ Global
 		{63BAE169-D595-4464-8E7E-50D6FD379348}.Debug|x64.Build.0 = Debug|x64
 		{63BAE169-D595-4464-8E7E-50D6FD379348}.Release|x64.ActiveCfg = Release|x64
 		{63BAE169-D595-4464-8E7E-50D6FD379348}.Release|x64.Build.0 = Release|x64
+		{A61324AD-CE32-46D1-A95E-7E28A6D8CCA7}.Debug|x64.ActiveCfg = Debug|x64
+		{A61324AD-CE32-46D1-A95E-7E28A6D8CCA7}.Debug|x64.Build.0 = Debug|x64
+		{A61324AD-CE32-46D1-A95E-7E28A6D8CCA7}.Release|x64.ActiveCfg = Release|x64
+		{A61324AD-CE32-46D1-A95E-7E28A6D8CCA7}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

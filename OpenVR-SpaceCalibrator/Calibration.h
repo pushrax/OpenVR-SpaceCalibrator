@@ -15,7 +15,7 @@ enum class CalibrationState
 struct CalibrationContext
 {
 	CalibrationState state = CalibrationState::None;
-	int referenceID, targetID;
+	uint32_t referenceID, targetID;
 
 	Eigen::Vector3d calibratedRotation;
 	Eigen::Vector3d calibratedTranslation;

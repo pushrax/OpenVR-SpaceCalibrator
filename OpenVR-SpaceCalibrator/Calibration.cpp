@@ -1,16 +1,16 @@
 #include "stdafx.h"
 #include "Calibration.h"
 #include "Configuration.h"
+#include "IPCClient.h"
 
 #include <string>
 #include <vector>
 #include <iostream>
 
-#include <lib_vrinputemulator/vrinputemulator.h>
 #include <Eigen/Dense>
 
 
-static vrinputemulator::VRInputEmulator InputEmulator;
+static IPCClient Driver;
 CalibrationContext CalCtx;
 
 void InitVR()
@@ -32,7 +32,7 @@ void InitVR()
 		throw std::runtime_error("OpenVR error: Outdated IVRSettings_Version");
 	}
 
-	InputEmulator.connect();
+	Driver.Connect();
 }
 
 struct Pose
@@ -315,13 +315,15 @@ void ScanAndApplyProfile(CalibrationContext &ctx)
 		else
 		{
 			//printf("setting calibration for %d (%s)\n", id, buffer);
-			auto vrRotQuat = VRRotationQuat(ctx.calibratedRotation);
-			InputEmulator.setWorldFromDriverRotationOffset(id, vrRotQuat);
 
-			auto vrTransVec = VRTranslationVec(ctx.calibratedTranslation);
-			InputEmulator.setWorldFromDriverTranslationOffset(id, vrTransVec);
-
-			InputEmulator.enableDeviceOffsets(id, true);
+			protocol::Request req(protocol::RequestSetDeviceTransform);
+			req.setDeviceTransform = {
+				id,
+				true,
+				VRTranslationVec(ctx.calibratedTranslation),
+				VRRotationQuat(ctx.calibratedRotation)
+			};
+			Driver.SendBlocking(req);
 		}
 	}
 }
@@ -334,9 +336,9 @@ void ResetAndDisableOffsets(uint32_t id)
 	vr::HmdQuaternion_t zeroQ;
 	zeroQ.x = 0; zeroQ.y = 0; zeroQ.z = 0; zeroQ.w = 1;
 
-	InputEmulator.setWorldFromDriverRotationOffset(id, zeroQ);
-	InputEmulator.setWorldFromDriverTranslationOffset(id, zeroV);
-	InputEmulator.enableDeviceOffsets(id, false);
+	protocol::Request req(protocol::RequestSetDeviceTransform);
+	req.setDeviceTransform = { id, false, zeroV, zeroQ };
+	Driver.SendBlocking(req);
 }
 
 void StartCalibration()
@@ -442,8 +444,10 @@ void CalibrationTick(double time)
 			ctx.calibratedRotation = CalibrateRotation(samples);
 
 			auto vrRotQuat = VRRotationQuat(ctx.calibratedRotation);
-			InputEmulator.setWorldFromDriverRotationOffset(ctx.targetID, vrRotQuat);
-			InputEmulator.enableDeviceOffsets(ctx.targetID, true);
+
+			protocol::Request req(protocol::RequestSetDeviceTransform);
+			req.setDeviceTransform = { ctx.targetID, true, vrRotQuat };
+			Driver.SendBlocking(req);
 
 			ctx.state = CalibrationState::Translation;
 		}
@@ -452,7 +456,10 @@ void CalibrationTick(double time)
 			ctx.calibratedTranslation = CalibrateTranslation(samples);
 
 			auto vrTrans = VRTranslationVec(ctx.calibratedTranslation);
-			InputEmulator.setWorldFromDriverTranslationOffset(ctx.targetID, vrTrans);
+
+			protocol::Request req(protocol::RequestSetDeviceTransform);
+			req.setDeviceTransform = { ctx.targetID, true, vrTrans };
+			Driver.SendBlocking(req);
 
 			SaveProfile(ctx);
 			CalCtx.Message("Finished calibration, profile saved\n");

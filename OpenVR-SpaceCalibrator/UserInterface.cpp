@@ -42,7 +42,7 @@ void BuildMainWindow()
 	auto &io = ImGui::GetIO();
 
 	ImGui::SetNextWindowPos(ImVec2(0.0f, 0.0f), ImGuiSetCond_Always);
-    ImGui::SetNextWindowSize(io.DisplaySize, ImGuiSetCond_Always);
+	ImGui::SetNextWindowSize(io.DisplaySize, ImGuiSetCond_Always);
 
 	if (!ImGui::Begin("MainWindow", nullptr, windowFlags))
 	{
@@ -68,7 +68,7 @@ void BuildMainWindow()
 			scale = 2.0f / 3.0f;
 		}
 
-		if (ImGui::Button("Start New Calibration", ImVec2(width * scale, ImGui::GetTextLineHeight() * 2)))
+		if (ImGui::Button("Start Calibration", ImVec2(width * scale, ImGui::GetTextLineHeight() * 2)))
 		{
 			ImGui::OpenPopup("Calibration Progress");
 			StartCalibration();
@@ -99,7 +99,7 @@ void BuildMainWindow()
 	}
 
 	ImGui::SetNextWindowPos(ImVec2(20.0f, 20.0f), ImGuiSetCond_Always);
-    ImGui::SetNextWindowSize(ImVec2(io.DisplaySize.x - 40.0f, io.DisplaySize.y - 40.0f), ImGuiSetCond_Always);
+	ImGui::SetNextWindowSize(ImVec2(io.DisplaySize.x - 40.0f, io.DisplaySize.y - 40.0f), ImGuiSetCond_Always);
 	if (ImGui::BeginPopupModal("Calibration Progress", nullptr, windowFlags))
 	{
 		ImGui::TextWrapped(CalCtx.messages.c_str());
