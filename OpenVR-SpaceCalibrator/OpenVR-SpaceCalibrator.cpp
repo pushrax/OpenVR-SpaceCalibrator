@@ -97,9 +97,23 @@ void RunLoop()
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPWSTR lpCmdLine, _In_ int nCmdShow)
 {
-	UNREFERENCED_PARAMETER(hPrevInstance);
-	UNREFERENCED_PARAMETER(lpCmdLine);
 	//CreateConsole();
+
+	if (lstrcmp(lpCmdLine, L"-openvrpath") == 0)
+	{
+		auto vrErr = vr::VRInitError_None;
+		vr::VR_Init(&vrErr, vr::VRApplication_Utility);
+		if (vrErr == vr::VRInitError_None)
+		{
+			printf("%s", vr::VR_RuntimePath());
+			vr::VR_Shutdown();
+			Sleep(2000);
+			return 0;
+		}
+		fprintf(stderr, "Failed to initialize OpenVR: %s\n", vr::VR_GetVRInitErrorAsEnglishDescription(vrErr));
+		vr::VR_Shutdown();
+		return -2;
+	}
 
 	if (!glfwInit())
 	{

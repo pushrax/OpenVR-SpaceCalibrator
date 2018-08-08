@@ -277,6 +277,19 @@ vr::HmdVector3d_t VRTranslationVec(Eigen::Vector3d transcm)
 	return vrTrans;
 }
 
+void ResetAndDisableOffsets(uint32_t id)
+{
+	vr::HmdVector3d_t zeroV;
+	zeroV.v[0] = zeroV.v[1] = zeroV.v[2] = 0;
+
+	vr::HmdQuaternion_t zeroQ;
+	zeroQ.x = 0; zeroQ.y = 0; zeroQ.z = 0; zeroQ.w = 1;
+
+	protocol::Request req(protocol::RequestSetDeviceTransform);
+	req.setDeviceTransform = { id, false, zeroV, zeroQ };
+	Driver.SendBlocking(req);
+}
+
 void ScanAndApplyProfile(CalibrationContext &ctx)
 {
 	char buffer[vr::k_unMaxPropertyStringSize];
@@ -292,53 +305,50 @@ void ScanAndApplyProfile(CalibrationContext &ctx)
 			vr::ETrackedPropertyError err = vr::TrackedProp_Success;
 			auto universeId = vr::VRSystem()->GetUint64TrackedDeviceProperty(id, vr::Prop_CurrentUniverseId_Uint64, &err);
 			printf("uid %d err %d\n", universeId, err);
+			ResetAndDisableOffsets(id);
 			continue;
 		}*/
+
+		if (!ctx.validProfile)
+		{
+			ResetAndDisableOffsets(id);
+			continue;
+		}
+
+		if (deviceClass == vr::TrackedDeviceClass_TrackingReference || deviceClass == vr::TrackedDeviceClass_HMD)
+		{
+			//auto p = ctx.devicePoses[id].mDeviceToAbsoluteTracking.m;
+			//printf("REF %d: %f %f %f\n", id, p[0][3], p[1][3], p[2][3]);
+			ResetAndDisableOffsets(id);
+			continue;
+		}
 
 		vr::ETrackedPropertyError err = vr::TrackedProp_Success;
 		vr::VRSystem()->GetStringTrackedDeviceProperty(id, vr::Prop_TrackingSystemName_String, buffer, vr::k_unMaxPropertyStringSize, &err);
 
 		if (err != vr::TrackedProp_Success)
+		{
+			ResetAndDisableOffsets(id);
 			continue;
+		}
 
 		std::string trackingSystem(buffer);
 
 		if (trackingSystem != ctx.targetTrackingSystem)
+		{
+			ResetAndDisableOffsets(id);
 			continue;
-
-		if (deviceClass == vr::TrackedDeviceClass_TrackingReference || deviceClass == vr::TrackedDeviceClass_HMD)
-		{
-			// TODO(pushrax): detect zero reference switches and adjust calibration automatically
-			//auto p = ctx.devicePoses[id].mDeviceToAbsoluteTracking.m;
-			//printf("REF %d: %f %f %f\n", id, p[0][3], p[1][3], p[2][3]);
 		}
-		else
-		{
-			//printf("setting calibration for %d (%s)\n", id, buffer);
 
-			protocol::Request req(protocol::RequestSetDeviceTransform);
-			req.setDeviceTransform = {
-				id,
-				true,
-				VRTranslationVec(ctx.calibratedTranslation),
-				VRRotationQuat(ctx.calibratedRotation)
-			};
-			Driver.SendBlocking(req);
-		}
+		protocol::Request req(protocol::RequestSetDeviceTransform);
+		req.setDeviceTransform = {
+			id,
+			true,
+			VRTranslationVec(ctx.calibratedTranslation),
+			VRRotationQuat(ctx.calibratedRotation)
+		};
+		Driver.SendBlocking(req);
 	}
-}
-
-void ResetAndDisableOffsets(uint32_t id)
-{
-	vr::HmdVector3d_t zeroV;
-	zeroV.v[0] = zeroV.v[1] = zeroV.v[2] = 0;
-
-	vr::HmdQuaternion_t zeroQ;
-	zeroQ.x = 0; zeroQ.y = 0; zeroQ.z = 0; zeroQ.w = 1;
-
-	protocol::Request req(protocol::RequestSetDeviceTransform);
-	req.setDeviceTransform = { id, false, zeroV, zeroQ };
-	Driver.SendBlocking(req);
 }
 
 void StartCalibration()
@@ -364,10 +374,7 @@ void CalibrationTick(double time)
 	{
 		ctx.wantedUpdateInterval = 1.0;
 
-		if (!ctx.validProfile)
-			return;
-
-		if ((time - ctx.timeLastScan) >= 2.5)
+		if ((time - ctx.timeLastScan) >= 1.0)
 		{
 			ScanAndApplyProfile(ctx);
 			ctx.timeLastScan = time;
@@ -377,12 +384,13 @@ void CalibrationTick(double time)
 
 	if (ctx.state == CalibrationState::Editing)
 	{
-		ctx.wantedUpdateInterval = 0.0;
+		ctx.wantedUpdateInterval = 0.1;
 
-		if (!ctx.validProfile)
-			return;
-
-		ScanAndApplyProfile(ctx);
+		if ((time - ctx.timeLastScan) >= 0.1)
+		{
+			ScanAndApplyProfile(ctx);
+			ctx.timeLastScan = time;
+		}
 		return;
 	}
 
