@@ -8,7 +8,7 @@
 ;General
 
 	!define OVERLAY_BASEDIR "..\client_overlay\bin\win64"
-	!define DRIVER_RESDIR "..\OpenVR-SpaceCalibratorDriver\000spacecalibrator"
+	!define DRIVER_RESDIR "..\OpenVR-SpaceCalibratorDriver\01spacecalibrator"
 
 	;Name and file
 	Name "OpenVR-SpaceCalibrator"
@@ -117,14 +117,14 @@ Section "Install" SecInstall
 	Pop $vrRuntimePath
 	DetailPrint "VR runtime path: $vrRuntimePath"
 
-	SetOutPath "$vrRuntimePath\drivers\000spacecalibrator"
+	SetOutPath "$vrRuntimePath\drivers\01spacecalibrator"
 	File "${DRIVER_RESDIR}\driver.vrdrivermanifest"
-	SetOutPath "$vrRuntimePath\drivers\000spacecalibrator\resources"
+	SetOutPath "$vrRuntimePath\drivers\01spacecalibrator\resources"
 	File "${DRIVER_RESDIR}\resources\driver.vrresources"
-	SetOutPath "$vrRuntimePath\drivers\000spacecalibrator\resources\settings"
+	SetOutPath "$vrRuntimePath\drivers\01spacecalibrator\resources\settings"
 	File "${DRIVER_RESDIR}\resources\settings\default.vrsettings"
-	SetOutPath "$vrRuntimePath\drivers\000spacecalibrator\bin\win64"
-	File "..\x64\Release\driver_000spacecalibrator.dll"
+	SetOutPath "$vrRuntimePath\drivers\01spacecalibrator\bin\win64"
+	File "..\x64\Release\driver_01spacecalibrator.dll"
 	
 	;Store installation folder
 	WriteRegStr HKLM "Software\OpenVR-SpaceCalibrator\Main" "" $INSTDIR
@@ -154,16 +154,16 @@ Section "Uninstall"
 	Var /GLOBAL vrRuntimePath2
 	ReadRegStr $vrRuntimePath2 HKLM "Software\OpenVR-SpaceCalibrator\Driver" ""
 	DetailPrint "VR runtime path: $vrRuntimePath2"
-	Delete "$vrRuntimePath2\drivers\000spacecalibrator\driver.vrdrivermanifest"
-	Delete "$vrRuntimePath2\drivers\000spacecalibrator\resources\driver.vrresources"
-	Delete "$vrRuntimePath2\drivers\000spacecalibrator\resources\settings\default.vrsettings"
-	Delete "$vrRuntimePath2\drivers\000spacecalibrator\bin\win64\driver_000spacecalibrator.dll"
-	Delete "$vrRuntimePath2\drivers\000spacecalibrator\bin\win64\space_calibrator_driver.log"
-	RMdir "$vrRuntimePath2\drivers\000spacecalibrator\resources\settings"
-	RMdir "$vrRuntimePath2\drivers\000spacecalibrator\resources\"
-	RMdir "$vrRuntimePath2\drivers\000spacecalibrator\bin\win64\"
-	RMdir "$vrRuntimePath2\drivers\000spacecalibrator\bin\"
-	RMdir "$vrRuntimePath2\drivers\000spacecalibrator\"
+	Delete "$vrRuntimePath2\drivers\01spacecalibrator\driver.vrdrivermanifest"
+	Delete "$vrRuntimePath2\drivers\01spacecalibrator\resources\driver.vrresources"
+	Delete "$vrRuntimePath2\drivers\01spacecalibrator\resources\settings\default.vrsettings"
+	Delete "$vrRuntimePath2\drivers\01spacecalibrator\bin\win64\driver_01spacecalibrator.dll"
+	Delete "$vrRuntimePath2\drivers\01spacecalibrator\bin\win64\space_calibrator_driver.log"
+	RMdir "$vrRuntimePath2\drivers\01spacecalibrator\resources\settings"
+	RMdir "$vrRuntimePath2\drivers\01spacecalibrator\resources\"
+	RMdir "$vrRuntimePath2\drivers\01spacecalibrator\bin\win64\"
+	RMdir "$vrRuntimePath2\drivers\01spacecalibrator\bin\"
+	RMdir "$vrRuntimePath2\drivers\01spacecalibrator\"
 
 	Delete "$INSTDIR\LICENSE"
 	Delete "$INSTDIR\OpenVR-SpaceCalibrator.exe"

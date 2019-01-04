@@ -116,7 +116,7 @@ void BuildMainWindow()
 
 	ImGui::SetNextWindowPos(ImVec2(ImGui::GetWindowWidth() - 60.0f, ImGui::GetWindowHeight() - ImGui::GetItemsLineHeightWithSpacing()));
 	ImGui::BeginChild("version stuff", ImVec2(60.0f, ImGui::GetItemsLineHeightWithSpacing() * 2), false);
-	ImGui::Text("v0.6a");
+	ImGui::Text("v0.6b");
 	ImGui::EndChild();
 
 	ImGui::End();
