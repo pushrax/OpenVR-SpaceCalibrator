@@ -33,7 +33,7 @@ struct CalibrationContext
 	struct Chaperone
 	{
 		bool valid = false;
-		bool autoApply = false;
+		bool autoApply = true;
 		std::vector<vr::HmdQuad_t> geometry;
 		vr::HmdMatrix34_t standingCenter;
 		vr::HmdVector2_t playSpaceSize;
