@@ -11,14 +11,28 @@
 
 static void UpgradeProfileV1(CalibrationContext &ctx);
 static void ParseProfileV2(CalibrationContext &ctx, std::istream &stream);
+static std::string ConfigFileName()
+{
+	std::string vrRuntimeConfigName = vr::VR_RuntimePath();
+	return vrRuntimeConfigName + "\\..\\..\\..\\config\\01spacecalibrator\\calibration.json";
+}
 
 void LoadProfile(CalibrationContext &ctx)
 {
-	std::ifstream file("openvr_space_calibration.json");
 	ctx.validProfile = false;
+
+	std::ifstream file(ConfigFileName());
+	if (!file.good())
+	{
+		std::cout << "Profile missing, trying fallback path" << std::endl;
+		// Fallback to working directory, which was the default for a long time.
+		file = std::ifstream("openvr_space_calibration.json");
+	}
+
 
 	if (!file.good())
 	{
+		std::cout << "Fallback profile missing, trying V1 path" << std::endl;
 		UpgradeProfileV1(ctx);
 		return;
 	}
@@ -61,7 +75,9 @@ static void ParseProfileV2(CalibrationContext &ctx, std::istream &stream)
 
 void SaveProfile(CalibrationContext &ctx)
 {
-	std::ofstream file("openvr_space_calibration.json");
+	std::cout << "Saving profile to " << ConfigFileName() << std::endl;
+
+	std::ofstream file(ConfigFileName());
 
 	picojson::object profile;
 	profile["reference_tracking_system"].set<std::string>(ctx.referenceTrackingSystem);

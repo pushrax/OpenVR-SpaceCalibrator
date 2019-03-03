@@ -1,3 +1,3 @@
 #pragma once
 
-void BuildMainWindow();
+void BuildMainWindow(bool runningInOverlay);

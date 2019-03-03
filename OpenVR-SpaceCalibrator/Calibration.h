@@ -40,6 +40,6 @@ struct CalibrationContext
 
 extern CalibrationContext CalCtx;
 
-void InitVR();
+void InitCalibrator();
 void CalibrationTick(double time);
 void StartCalibration();

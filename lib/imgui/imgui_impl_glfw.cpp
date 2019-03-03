@@ -54,6 +54,7 @@ static GlfwClientApi    g_ClientApi = GlfwClientApi_Unknown;
 static double           g_Time = 0.0;
 static bool             g_MouseJustPressed[5] = { false, false, false, false, false };
 static GLFWcursor*      g_MouseCursors[ImGuiMouseCursor_COUNT] = { 0 };
+static bool             g_EnableMouseInput = true;
 
 static const char* ImGui_ImplGlfw_GetClipboardText(void* user_data)
 {
@@ -106,6 +107,11 @@ void ImGui_ImplGlfw_InstallCallbacks(GLFWwindow* window)
     glfwSetScrollCallback(window, ImGui_ImplGlfw_ScrollCallback);
     glfwSetKeyCallback(window, ImGui_ImplGlfw_KeyCallback);
     glfwSetCharCallback(window, ImGui_ImplGlfw_CharCallback);
+}
+
+void ImGui_ImplGlfw_SetReadMouseFromGlfw(bool enabled)
+{
+	g_EnableMouseInput = enabled;
 }
 
 static bool ImGui_ImplGlfw_Init(GLFWwindow* window, bool install_callbacks, GlfwClientApi client_api)
@@ -185,6 +191,9 @@ void ImGui_ImplGlfw_Shutdown()
 
 static void ImGui_ImplGlfw_UpdateMousePosAndButtons()
 {
+	if (!g_EnableMouseInput)
+		return;
+
     // Update buttons
     ImGuiIO& io = ImGui::GetIO();
     for (int i = 0; i < IM_ARRAYSIZE(io.MouseDown); i++)
@@ -194,22 +203,22 @@ static void ImGui_ImplGlfw_UpdateMousePosAndButtons()
         g_MouseJustPressed[i] = false;
     }
 
+	if (!glfwGetWindowAttrib(g_Window, GLFW_FOCUSED))
+		return;
+
     // Update mouse position
     const ImVec2 mouse_pos_backup = io.MousePos;
     io.MousePos = ImVec2(-FLT_MAX, -FLT_MAX);
-    if (glfwGetWindowAttrib(g_Window, GLFW_FOCUSED))
-    {
-        if (io.WantSetMousePos)
-        {
-            glfwSetCursorPos(g_Window, (double)mouse_pos_backup.x, (double)mouse_pos_backup.y);
-        }
-        else
-        {
-            double mouse_x, mouse_y;
-            glfwGetCursorPos(g_Window, &mouse_x, &mouse_y);
-            io.MousePos = ImVec2((float)mouse_x, (float)mouse_y);
-        }
-    }
+	if (io.WantSetMousePos)
+	{
+		glfwSetCursorPos(g_Window, (double)mouse_pos_backup.x, (double)mouse_pos_backup.y);
+	}
+	else
+	{
+		double mouse_x, mouse_y;
+		glfwGetCursorPos(g_Window, &mouse_x, &mouse_y);
+		io.MousePos = ImVec2((float)mouse_x, (float)mouse_y);
+	}
 }
 
 static void ImGui_ImplGlfw_UpdateMouseCursor()

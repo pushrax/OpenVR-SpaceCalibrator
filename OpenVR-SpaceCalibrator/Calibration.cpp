@@ -13,25 +13,8 @@
 static IPCClient Driver;
 CalibrationContext CalCtx;
 
-void InitVR()
+void InitCalibrator()
 {
-	auto initError = vr::VRInitError_None;
-	vr::VR_Init(&initError, vr::VRApplication_Other);
-	if (initError != vr::VRInitError_None)
-	{
-		auto error = vr::VR_GetVRInitErrorAsEnglishDescription(initError);
-		throw std::runtime_error("OpenVR error:" + std::string(error));
-	}
-
-	if (!vr::VR_IsInterfaceVersionValid(vr::IVRSystem_Version))
-	{
-		throw std::runtime_error("OpenVR error: Outdated IVRSystem_Version");
-	}
-	else if (!vr::VR_IsInterfaceVersionValid(vr::IVRSettings_Version))
-	{
-		throw std::runtime_error("OpenVR error: Outdated IVRSettings_Version");
-	}
-
 	Driver.Connect();
 }
 

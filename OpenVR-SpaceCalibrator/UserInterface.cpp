@@ -9,6 +9,8 @@
 #include <algorithm>
 #include <imgui/imgui.h>
 
+#define VERSION_STRING "0.7"
+
 struct VRDevice
 {
 	int id = -1;
@@ -32,7 +34,7 @@ void BuildSystemSelection(const VRState &state);
 void BuildDeviceSelections(const VRState &state);
 void BuildProfileEditor();
 
-void BuildMainWindow()
+void BuildMainWindow(bool runningInOverlay)
 {
 	ImGuiWindowFlags windowFlags =
 		ImGuiWindowFlags_NoTitleBar |
@@ -60,12 +62,11 @@ void BuildMainWindow()
 
 	if (CalCtx.state == CalibrationState::None)
 	{
-		float width = ImGui::GetWindowContentRegionWidth();
-		float scale = 1.0f;
+		float width = ImGui::GetWindowContentRegionWidth(), scale = 1.0f;
 		if (CalCtx.validProfile)
 		{
-			width -= style.FramePadding.x * 2.0f;
-			scale = 2.0f / 3.0f;
+			width -= style.FramePadding.x * 4.0f;
+			scale = 1.0f / 3.0f;
 		}
 
 		if (ImGui::Button("Start Calibration", ImVec2(width * scale, ImGui::GetTextLineHeight() * 2)))
@@ -77,9 +78,17 @@ void BuildMainWindow()
 		if (CalCtx.validProfile)
 		{
 			ImGui::SameLine();
-			if (ImGui::Button("Edit Calibration", ImVec2(width / 3.0f, ImGui::GetTextLineHeight() * 2)))
+			if (ImGui::Button("Edit Calibration", ImVec2(width * scale, ImGui::GetTextLineHeight() * 2)))
 			{
 				CalCtx.state = CalibrationState::Editing;
+			}
+
+			ImGui::SameLine();
+			if (ImGui::Button("Clear Calibration", ImVec2(width * scale, ImGui::GetTextLineHeight() * 2)))
+			{
+				CalCtx.calibratedRotation = Eigen::Vector3d();
+				CalCtx.calibratedTranslation = Eigen::Vector3d();
+				CalCtx.validProfile = false;
 			}
 		}
 	}
@@ -114,9 +123,14 @@ void BuildMainWindow()
 		ImGui::EndPopup();
 	}
 
-	ImGui::SetNextWindowPos(ImVec2(ImGui::GetWindowWidth() - 60.0f, ImGui::GetWindowHeight() - ImGui::GetItemsLineHeightWithSpacing()));
-	ImGui::BeginChild("version stuff", ImVec2(60.0f, ImGui::GetItemsLineHeightWithSpacing() * 2), false);
-	ImGui::Text("v0.6b");
+	ImGui::SetNextWindowPos(ImVec2(10.0f, ImGui::GetWindowHeight() - ImGui::GetItemsLineHeightWithSpacing()));
+	ImGui::BeginChild("bottom line", ImVec2(ImGui::GetWindowWidth() - 20.0f, ImGui::GetItemsLineHeightWithSpacing() * 2), false);
+	ImGui::Text("OpenVR Space Calibrator v" VERSION_STRING " - by tach/pushrax");
+	if (runningInOverlay)
+	{
+		ImGui::SameLine();
+		ImGui::Text("- close VR overlay to use mouse");
+	}
 	ImGui::EndChild();
 
 	ImGui::End();

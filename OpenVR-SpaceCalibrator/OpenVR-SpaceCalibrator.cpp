@@ -9,10 +9,14 @@
 #include <imgui/imgui_impl_opengl3.h>
 #include <GL/gl3w.h>
 #include <GLFW/glfw3.h>
+#include <openvr.h>
+#include <direct.h>
 
 #pragma comment(linker,"\"/manifestdependency:type='win32' \
 name='Microsoft.Windows.Common-Controls' version='6.0.0.0' \
 processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
+
+#define OPENVR_APPLICATION_KEY "pushrax.SpaceCalibrator"
 
 void CreateConsole()
 {
@@ -34,14 +38,23 @@ void GLFWErrorCallback(int error, const char* description)
 }
 
 GLFWwindow *glfwWindow = nullptr;
+vr::VROverlayHandle_t overlayMainHandle = 0, overlayThumbnailHandle = 0;
+GLuint fboHandle = 0, fboTextureHandle = 0;
+int fboTextureWidth = 0, fboTextureHeight = 0;
+
+static char cwd[MAX_PATH];
 
 void CreateGLFWWindow()
 {
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+	glfwWindowHint(GLFW_RESIZABLE, false);
 
-	glfwWindow = glfwCreateWindow(1280, 800, "OpenVR-SpaceCalibrator", NULL, NULL);
+	fboTextureWidth = 1200;
+	fboTextureHeight = 800;
+
+	glfwWindow = glfwCreateWindow(fboTextureWidth, fboTextureHeight, "OpenVR-SpaceCalibrator", NULL, NULL);
 	if (!glfwWindow)
 		throw std::runtime_error("Failed to create window");
 
@@ -57,63 +70,222 @@ void CreateGLFWWindow()
 	io.Fonts->AddFontFromMemoryCompressedTTF(DroidSans_compressed_data, DroidSans_compressed_size, 24.0f);
 
 	ImGui_ImplGlfw_InitForOpenGL(glfwWindow, true);
-	ImGui_ImplOpenGL3_Init("#version 150");
+	ImGui_ImplOpenGL3_Init("#version 330");
 
 	ImGui::StyleColorsDark();
+
+	glGenTextures(1, &fboTextureHandle);
+	glBindTexture(GL_TEXTURE_2D, fboTextureHandle);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, fboTextureWidth, fboTextureHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+
+	glGenFramebuffers(1, &fboHandle);
+	glBindFramebuffer(GL_FRAMEBUFFER, fboHandle);
+	glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, fboTextureHandle, 0);
+
+	GLenum drawBuffers[1] = { GL_COLOR_ATTACHMENT0 };
+	glDrawBuffers(1, drawBuffers);
+
+	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+	{
+		throw std::runtime_error("OpenGL framebuffer incomplete");
+	}
+}
+
+void TryCreateVROverlay()
+{
+	if (overlayMainHandle || !vr::VROverlay())
+		return;
+
+	vr::VROverlayError error = vr::VROverlay()->CreateDashboardOverlay(
+		"pushrax.SpaceCalibrator", "Space Cal",
+		&overlayMainHandle, &overlayThumbnailHandle
+	);
+
+	if (error == vr::VROverlayError_KeyInUse)
+	{
+		throw std::runtime_error("Another instance of OpenVR Space Calibrator is already running");
+	}
+	else if (error != vr::VROverlayError_None)
+	{
+		throw std::runtime_error("Error creating VR overlay: " + std::string(vr::VROverlay()->GetOverlayErrorNameFromEnum(error)));
+	}
+
+	vr::VROverlay()->SetOverlayWidthInMeters(overlayMainHandle, 3.0f);
+	vr::VROverlay()->SetOverlayInputMethod(overlayMainHandle, vr::VROverlayInputMethod_Mouse);
+	vr::VROverlay()->SetOverlayFlag(overlayMainHandle, vr::VROverlayFlags_SendVRScrollEvents, true);
+
+	std::string iconPath = cwd;
+	iconPath += "\\icon.png";
+	vr::VROverlay()->SetOverlayFromFile(overlayThumbnailHandle, iconPath.c_str());
+}
+
+void InitVR()
+{
+	auto initError = vr::VRInitError_None;
+	vr::VR_Init(&initError, vr::VRApplication_Other);
+	if (initError != vr::VRInitError_None)
+	{
+		auto error = vr::VR_GetVRInitErrorAsEnglishDescription(initError);
+		throw std::runtime_error("OpenVR error:" + std::string(error));
+	}
+
+	if (!vr::VR_IsInterfaceVersionValid(vr::IVRSystem_Version))
+	{
+		throw std::runtime_error("OpenVR error: Outdated IVRSystem_Version");
+	}
+	else if (!vr::VR_IsInterfaceVersionValid(vr::IVRSettings_Version))
+	{
+		throw std::runtime_error("OpenVR error: Outdated IVRSettings_Version");
+	}
+	else if (!vr::VR_IsInterfaceVersionValid(vr::IVROverlay_Version))
+	{
+		throw std::runtime_error("OpenVR error: Outdated IVROverlay_Version");
+	}
 }
 
 void RunLoop()
 {
 	while (!glfwWindowShouldClose(glfwWindow))
 	{
+		TryCreateVROverlay();
+
 		double time = glfwGetTime();
 		CalibrationTick(time);
 
+		bool dashboardVisible = false;
 		int width, height;
 		glfwGetFramebufferSize(glfwWindow, &width, &height);
 
+		if (overlayMainHandle && vr::VROverlay())
+		{
+			auto &io = ImGui::GetIO();
+			dashboardVisible = vr::VROverlay()->IsActiveDashboardOverlay(overlayMainHandle);
+
+			static bool keyboardOpen = false, keyboardJustClosed = false;
+
+			if (keyboardJustClosed && keyboardOpen)
+			{
+				ImGui::ClearActiveID();
+				io.WantTextInput = false;
+				keyboardOpen = false;
+			}
+			else if (keyboardJustClosed)
+			{
+				keyboardJustClosed = false;
+			}
+			else if (!io.WantTextInput)
+			{
+				keyboardOpen = false;
+			}
+			else if (io.WantTextInput && !keyboardOpen && !keyboardJustClosed)
+			{
+				char buf[0x400];
+				ImGui::GetActiveText(buf, sizeof buf);
+				buf[0x3ff] = 0;
+
+				vr::VROverlay()->ShowKeyboardForOverlay(
+					overlayMainHandle, vr::k_EGamepadTextInputModeNormal, vr::k_EGamepadTextInputLineModeSingleLine,
+					"Space Calibrator Overlay", sizeof buf, buf, false, 0
+				);
+				keyboardOpen = true;
+			}
+
+			vr::VREvent_t vrEvent;
+			while (vr::VROverlay()->PollNextOverlayEvent(overlayMainHandle, &vrEvent, sizeof(vrEvent)))
+			{
+				switch (vrEvent.eventType) {
+				case vr::VREvent_MouseMove:
+					io.MousePos.x = vrEvent.data.mouse.x;
+					io.MousePos.y = vrEvent.data.mouse.y;
+					break;
+				case vr::VREvent_MouseButtonDown:
+					io.MouseDown[vrEvent.data.mouse.button == vr::VRMouseButton_Left ? 0 : 1] = true;
+					break;
+				case vr::VREvent_MouseButtonUp:
+					io.MouseDown[vrEvent.data.mouse.button == vr::VRMouseButton_Left ? 0 : 1] = false;
+					break;
+				case vr::VREvent_Scroll:
+					io.MouseWheelH += vrEvent.data.scroll.xdelta * 360.0f * 8.0f;
+					io.MouseWheel += vrEvent.data.scroll.ydelta * 360.0f * 8.0f;
+					break;
+				case vr::VREvent_KeyboardDone: {
+					char buf[0x400];
+					vr::VROverlay()->GetKeyboardText(buf, sizeof buf);
+					ImGui::SetActiveText(buf, sizeof buf);
+					keyboardJustClosed = true;
+					break;
+				}
+				case vr::VREvent_Quit:
+					return;
+				}
+			}
+		}
+
+		/*if (width != fboTextureWidth || height != fboTextureHeight)
+		{
+			if (overlayMainHandle)
+			{
+				vr::VROverlay()->ClearOverlayTexture(overlayMainHandle);
+			}
+			fboTextureWidth = width;
+			fboTextureHeight = height;
+			glBindTexture(GL_TEXTURE_2D, fboTextureHandle);
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, fboTextureWidth, fboTextureHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+			// OpenVR stops rendering the overlay if we recreate the texture storage smaller than it was originally.
+		}*/
+
+		ImGui_ImplGlfw_SetReadMouseFromGlfw(!dashboardVisible);
 		ImGui_ImplOpenGL3_NewFrame();
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
 
-		BuildMainWindow();
+		BuildMainWindow(dashboardVisible);
 
 		ImGui::Render();
 
+		glBindFramebuffer(GL_FRAMEBUFFER, fboHandle);
 		glViewport(0, 0, width, height);
 		glClearColor(0, 0, 0, 1);
 		glClear(GL_COLOR_BUFFER_BIT);
 
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		glBindFramebuffer(GL_READ_FRAMEBUFFER, fboHandle);
+		glBlitFramebuffer(0, 0, width, height, 0, 0, width, height, GL_COLOR_BUFFER_BIT, GL_NEAREST);
 		glfwSwapBuffers(glfwWindow);
-		glfwWaitEventsTimeout(CalCtx.wantedUpdateInterval);
-	}
 
-	ImGui_ImplOpenGL3_Shutdown();
-	ImGui_ImplGlfw_Shutdown();
-	ImGui::DestroyContext();
+		if (dashboardVisible)
+		{
+			vr::Texture_t vrTex;
+			vrTex.eType = vr::TextureType_OpenGL;
+			vrTex.eColorSpace = vr::ColorSpace_Linear;
+
+			vrTex.handle = (void *)
+#if defined _WIN64 || defined _LP64
+			(uint64_t)
+#endif
+				fboTextureHandle;
+
+			vr::HmdVector2_t mouseScale = { (float) width, (float) height };
+
+			vr::VROverlay()->SetOverlayTexture(overlayMainHandle, &vrTex);
+			vr::VROverlay()->SetOverlayMouseScale(overlayMainHandle, &mouseScale);
+		}
+
+		glfwWaitEventsTimeout(dashboardVisible ? 0.0 : CalCtx.wantedUpdateInterval);
+	}
 }
+
+static void handleCommandLine(LPWSTR lpCmdLine);
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPWSTR lpCmdLine, _In_ int nCmdShow)
 {
+	_getcwd(cwd, MAX_PATH);
 	//CreateConsole();
-
-	if (lstrcmp(lpCmdLine, L"-openvrpath") == 0)
-	{
-		auto vrErr = vr::VRInitError_None;
-		vr::VR_Init(&vrErr, vr::VRApplication_Utility);
-		if (vrErr == vr::VRInitError_None)
-		{
-			printf("%s", vr::VR_RuntimePath());
-			vr::VR_Shutdown();
-			Sleep(2000);
-			return 0;
-		}
-		fprintf(stderr, "Failed to initialize OpenVR: %s\n", vr::VR_GetVRInitErrorAsEnglishDescription(vrErr));
-		vr::VR_Shutdown();
-		return -2;
-	}
+	handleCommandLine(lpCmdLine);
 
 	if (!glfwInit())
 	{
@@ -126,8 +298,21 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 	try {
 		InitVR();
 		CreateGLFWWindow();
+		InitCalibrator();
 		LoadProfile(CalCtx);
 		RunLoop();
+
+		vr::VR_Shutdown();
+
+		if (fboHandle)
+			glDeleteFramebuffers(1, &fboHandle);
+
+		if (fboTextureHandle)
+			glDeleteTextures(1, &fboTextureHandle);
+
+		ImGui_ImplOpenGL3_Shutdown();
+		ImGui_ImplGlfw_Shutdown();
+		ImGui::DestroyContext();
 	}
 	catch (std::runtime_error &e)
 	{
@@ -142,4 +327,87 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 
 	glfwTerminate();
 	return 0;
+}
+
+static void handleCommandLine(LPWSTR lpCmdLine)
+{
+	if (lstrcmp(lpCmdLine, L"-openvrpath") == 0)
+	{
+		auto vrErr = vr::VRInitError_None;
+		vr::VR_Init(&vrErr, vr::VRApplication_Utility);
+		if (vrErr == vr::VRInitError_None)
+		{
+			printf("%s", vr::VR_RuntimePath());
+			vr::VR_Shutdown();
+			Sleep(2000);
+			exit(0);
+		}
+		fprintf(stderr, "Failed to initialize OpenVR: %s\n", vr::VR_GetVRInitErrorAsEnglishDescription(vrErr));
+		vr::VR_Shutdown();
+		exit(-2);
+	}
+	else if (lstrcmp(lpCmdLine, L"-installmanifest") == 0)
+	{
+		auto vrErr = vr::VRInitError_None;
+		vr::VR_Init(&vrErr, vr::VRApplication_Utility);
+		if (vrErr == vr::VRInitError_None)
+		{
+			if (vr::VRApplications()->IsApplicationInstalled(OPENVR_APPLICATION_KEY))
+			{
+				char oldWd[MAX_PATH] = { 0 };
+				auto vrAppErr = vr::VRApplicationError_None;
+				vr::VRApplications()->GetApplicationPropertyString(OPENVR_APPLICATION_KEY, vr::VRApplicationProperty_WorkingDirectory_String, oldWd, MAX_PATH, &vrAppErr);
+				if (vrAppErr != vr::VRApplicationError_None)
+				{
+					fprintf(stderr, "Failed to get old working dir, skipping removal: %s\n", vr::VRApplications()->GetApplicationsErrorNameFromEnum(vrAppErr));
+				}
+				else
+				{
+					std::string manifestPath = oldWd;
+					manifestPath += "\\manifest.vrmanifest";
+					std::cout << "Removing old manifest path: " << manifestPath << std::endl;
+					vr::VRApplications()->RemoveApplicationManifest(manifestPath.c_str());
+				}
+			}
+			std::string manifestPath = cwd;
+			manifestPath += "\\manifest.vrmanifest";
+			std::cout << "Adding manifest path: " << manifestPath << std::endl;
+			auto vrAppErr = vr::VRApplications()->AddApplicationManifest(manifestPath.c_str());
+			if (vrAppErr != vr::VRApplicationError_None)
+			{
+				fprintf(stderr, "Failed to add manifest: %s\n", vr::VRApplications()->GetApplicationsErrorNameFromEnum(vrAppErr));
+			}
+			else
+			{
+				vr::VRApplications()->SetApplicationAutoLaunch(OPENVR_APPLICATION_KEY, true);
+			}
+			vr::VR_Shutdown();
+			Sleep(2000);
+			exit(0);
+		}
+		fprintf(stderr, "Failed to initialize OpenVR: %s\n", vr::VR_GetVRInitErrorAsEnglishDescription(vrErr));
+		vr::VR_Shutdown();
+		exit(-2);
+	}
+	else if (lstrcmp(lpCmdLine, L"-removemanifest") == 0)
+	{
+		auto vrErr = vr::VRInitError_None;
+		vr::VR_Init(&vrErr, vr::VRApplication_Utility);
+		if (vrErr == vr::VRInitError_None)
+		{
+			if (vr::VRApplications()->IsApplicationInstalled(OPENVR_APPLICATION_KEY))
+			{
+				std::string manifestPath = cwd;
+				manifestPath += "\\manifest.vrmanifest";
+				std::cout << "Removing manifest path: " << manifestPath << std::endl;
+				vr::VRApplications()->RemoveApplicationManifest(manifestPath.c_str());
+			}
+			vr::VR_Shutdown();
+			Sleep(2000);
+			exit(0);
+		}
+		fprintf(stderr, "Failed to initialize OpenVR: %s\n", vr::VR_GetVRInitErrorAsEnglishDescription(vrErr));
+		vr::VR_Shutdown();
+		exit(-2);
+	}
 }

@@ -2830,6 +2830,26 @@ void ImGui::SetAllocatorFunctions(void* (*alloc_func)(size_t sz, void* user_data
     GImAllocatorUserData = user_data;
 }
 
+int ImGui::GetActiveText(char *buf, int buf_size)
+{
+	auto text = GImGui->InputTextState.Text;
+	return ImTextStrToUtf8(buf, buf_size, text.Data, text.Data + text.Size);
+}
+
+void ImGui::SetActiveText(const char *buf, int buf_size)
+{
+	auto &edit_state = GImGui->InputTextState;
+	auto &text = edit_state.Text;
+
+	if (text.Size < buf_size)
+		buf_size = text.Size;
+
+	const char* buf_end = NULL;
+	edit_state.CurLenW = ImTextStrFromUtf8(text.Data, buf_size, buf, buf + buf_size, &buf_end);
+	edit_state.CurLenA = (int)(buf_end - buf);
+	edit_state.CursorClamp();
+}
+
 ImGuiContext* ImGui::CreateContext(ImFontAtlas* shared_font_atlas)
 {
     ImGuiContext* ctx = IM_NEW(ImGuiContext)(shared_font_atlas);
