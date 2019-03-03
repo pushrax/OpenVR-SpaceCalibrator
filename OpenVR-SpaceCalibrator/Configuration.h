@@ -4,3 +4,4 @@
 
 void LoadProfile(CalibrationContext &ctx);
 void SaveProfile(CalibrationContext &ctx);
+void WriteActivateMultipleDriversToConfig();

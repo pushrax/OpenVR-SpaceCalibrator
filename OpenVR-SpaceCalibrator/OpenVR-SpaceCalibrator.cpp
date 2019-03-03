@@ -37,10 +37,13 @@ void GLFWErrorCallback(int error, const char* description)
 	fprintf(stderr, "GLFW Error %d: %s\n", error, description);
 }
 
-GLFWwindow *glfwWindow = nullptr;
-vr::VROverlayHandle_t overlayMainHandle = 0, overlayThumbnailHandle = 0;
-GLuint fboHandle = 0, fboTextureHandle = 0;
-int fboTextureWidth = 0, fboTextureHeight = 0;
+
+static void HandleCommandLine(LPWSTR lpCmdLine);
+
+static GLFWwindow *glfwWindow = nullptr;
+static vr::VROverlayHandle_t overlayMainHandle = 0, overlayThumbnailHandle = 0;
+static GLuint fboHandle = 0, fboTextureHandle = 0;
+static int fboTextureWidth = 0, fboTextureHeight = 0;
 
 static char cwd[MAX_PATH];
 
@@ -61,6 +64,8 @@ void CreateGLFWWindow()
 	glfwMakeContextCurrent(glfwWindow);
 	glfwSwapInterval(1);
 	gl3wInit();
+
+	glfwIconifyWindow(glfwWindow);
 
 	ImGui::CreateContext();
 	ImGuiIO& io = ImGui::GetIO();
@@ -165,10 +170,12 @@ void RunLoop()
 
 			static bool keyboardOpen = false, keyboardJustClosed = false;
 
+			// After closing the keyboard, this code waits one frame for ImGui to pick up the new text from SetActiveText
+			// before clearing the active widget. Then it waits another frame before allowing the keyboard to open again,
+			// otherwise it will do so instantly since WantTextInput is still true on the second frame.
 			if (keyboardJustClosed && keyboardOpen)
 			{
 				ImGui::ClearActiveID();
-				io.WantTextInput = false;
 				keyboardOpen = false;
 			}
 			else if (keyboardJustClosed)
@@ -177,6 +184,7 @@ void RunLoop()
 			}
 			else if (!io.WantTextInput)
 			{
+				// User might close the keyboard without hitting Done, so we unset the flag to allow it to open again.
 				keyboardOpen = false;
 			}
 			else if (io.WantTextInput && !keyboardOpen && !keyboardJustClosed)
@@ -223,19 +231,6 @@ void RunLoop()
 			}
 		}
 
-		/*if (width != fboTextureWidth || height != fboTextureHeight)
-		{
-			if (overlayMainHandle)
-			{
-				vr::VROverlay()->ClearOverlayTexture(overlayMainHandle);
-			}
-			fboTextureWidth = width;
-			fboTextureHeight = height;
-			glBindTexture(GL_TEXTURE_2D, fboTextureHandle);
-			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, fboTextureWidth, fboTextureHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
-			// OpenVR stops rendering the overlay if we recreate the texture storage smaller than it was originally.
-		}*/
-
 		ImGui_ImplGlfw_SetReadMouseFromGlfw(!dashboardVisible);
 		ImGui_ImplOpenGL3_NewFrame();
 		ImGui_ImplGlfw_NewFrame();
@@ -279,13 +274,11 @@ void RunLoop()
 	}
 }
 
-static void handleCommandLine(LPWSTR lpCmdLine);
-
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPWSTR lpCmdLine, _In_ int nCmdShow)
 {
 	_getcwd(cwd, MAX_PATH);
 	//CreateConsole();
-	handleCommandLine(lpCmdLine);
+	HandleCommandLine(lpCmdLine);
 
 	if (!glfwInit())
 	{
@@ -329,7 +322,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 	return 0;
 }
 
-static void handleCommandLine(LPWSTR lpCmdLine)
+static void HandleCommandLine(LPWSTR lpCmdLine)
 {
 	if (lstrcmp(lpCmdLine, L"-openvrpath") == 0)
 	{
@@ -339,7 +332,6 @@ static void handleCommandLine(LPWSTR lpCmdLine)
 		{
 			printf("%s", vr::VR_RuntimePath());
 			vr::VR_Shutdown();
-			Sleep(2000);
 			exit(0);
 		}
 		fprintf(stderr, "Failed to initialize OpenVR: %s\n", vr::VR_GetVRInitErrorAsEnglishDescription(vrErr));
@@ -382,8 +374,7 @@ static void handleCommandLine(LPWSTR lpCmdLine)
 				vr::VRApplications()->SetApplicationAutoLaunch(OPENVR_APPLICATION_KEY, true);
 			}
 			vr::VR_Shutdown();
-			Sleep(2000);
-			exit(0);
+			exit(-2);
 		}
 		fprintf(stderr, "Failed to initialize OpenVR: %s\n", vr::VR_GetVRInitErrorAsEnglishDescription(vrErr));
 		vr::VR_Shutdown();
@@ -403,11 +394,34 @@ static void handleCommandLine(LPWSTR lpCmdLine)
 				vr::VRApplications()->RemoveApplicationManifest(manifestPath.c_str());
 			}
 			vr::VR_Shutdown();
-			Sleep(2000);
 			exit(0);
 		}
 		fprintf(stderr, "Failed to initialize OpenVR: %s\n", vr::VR_GetVRInitErrorAsEnglishDescription(vrErr));
 		vr::VR_Shutdown();
 		exit(-2);
+	}
+	else if (lstrcmp(lpCmdLine, L"-activatemultipledrivers") == 0)
+	{
+		int ret = -2;
+		auto vrErr = vr::VRInitError_None;
+		vr::VR_Init(&vrErr, vr::VRApplication_Utility);
+		if (vrErr == vr::VRInitError_None)
+		{
+			try
+			{
+				WriteActivateMultipleDriversToConfig();
+				ret = 0;
+			}
+			catch (std::runtime_error &e)
+			{
+				std::cerr << "Failed to set activateMultipleDrivers: " << e.what() << std::endl;
+			}
+		}
+		else
+		{
+			fprintf(stderr, "Failed to initialize OpenVR: %s\n", vr::VR_GetVRInitErrorAsEnglishDescription(vrErr));
+		}
+		vr::VR_Shutdown();
+		exit(ret);
 	}
 }

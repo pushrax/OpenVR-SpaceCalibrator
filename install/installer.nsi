@@ -1,4 +1,3 @@
-
 ;--------------------------------
 ;Include Modern UI
 
@@ -10,18 +9,12 @@
 	!define OVERLAY_BASEDIR "..\client_overlay\bin\win64"
 	!define DRIVER_RESDIR "..\OpenVR-SpaceCalibratorDriver\01spacecalibrator"
 
-	;Name and file
 	Name "OpenVR-SpaceCalibrator"
 	OutFile "OpenVR-SpaceCalibrator.exe"
-	
-	;Default installation folder
 	InstallDir "$PROGRAMFILES64\OpenVR-SpaceCalibrator"
-	
-	;Get installation folder from registry if available
 	InstallDirRegKey HKLM "Software\OpenVR-SpaceCalibrator\Main" ""
-	
-	;Request application privileges for Windows Vista
 	RequestExecutionLevel admin
+	ShowInstDetails show
 	
 ;--------------------------------
 ;Variables
@@ -103,14 +96,12 @@ Section "Install" SecInstall
 
 	SetOutPath "$INSTDIR"
 
-	;ADD YOUR OWN FILES HERE...
 	File "..\LICENSE"
 	File "..\x64\Release\OpenVR-SpaceCalibrator.exe"
 	File "..\x64\Release\openvr_api.dll"
 	File "..\OpenVR-SpaceCalibrator\manifest.vrmanifest"
 	File "..\OpenVR-SpaceCalibrator\icon.png"
 
-	; Install redistributable
 	ExecWait '"$INSTDIR\vcredist_x64.exe" /install /quiet'
 	
 	Var /GLOBAL vrRuntimePath
@@ -142,11 +133,9 @@ Section "Install" SecInstall
 	SetOutPath "$vrRuntimePath\drivers\01spacecalibrator\bin\win64"
 	File "..\x64\Release\driver_01spacecalibrator.dll"
 	
-	;Store installation folder
 	WriteRegStr HKLM "Software\OpenVR-SpaceCalibrator\Main" "" $INSTDIR
 	WriteRegStr HKLM "Software\OpenVR-SpaceCalibrator\Driver" "" $vrRuntimePath
   
-	;Create uninstaller
 	WriteUninstaller "$INSTDIR\Uninstall.exe"
 	WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\OpenVRSpaceCalibrator" "DisplayName" "OpenVR-SpaceCalibrator"
 	WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\OpenVRSpaceCalibrator" "UninstallString" "$\"$INSTDIR\Uninstall.exe$\""
@@ -155,6 +144,7 @@ Section "Install" SecInstall
 	
 	SetOutPath "$INSTDIR"
 	nsExec::ExecToLog '"$INSTDIR\OpenVR-SpaceCalibrator.exe" -installmanifest'
+	nsExec::ExecToLog '"$INSTDIR\OpenVR-SpaceCalibrator.exe" -activatemultipledrivers'
 
 SectionEnd
 
@@ -169,9 +159,9 @@ Section "Uninstall"
 			"SteamVR is still running. Cannot uninstall this software.$\nPlease close SteamVR and try again."
 		Abort
 	
+	SetOutPath "$INSTDIR"
 	nsExec::ExecToLog '"$INSTDIR\OpenVR-SpaceCalibrator.exe" -removemanifest'
 
-	; Delete installed files
 	Var /GLOBAL vrRuntimePath2
 	ReadRegStr $vrRuntimePath2 HKLM "Software\OpenVR-SpaceCalibrator\Driver" ""
 	DetailPrint "VR runtime path: $vrRuntimePath2"
