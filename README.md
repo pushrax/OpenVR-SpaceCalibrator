@@ -1,47 +1,47 @@
-# OpenVR-SpaceCalibrator
+# OpenVR Space Calibrator
 
-Use VR devices from one company with any other.
+Use tracked VR devices from one company with any other.
 
-This is **beta software** and may not work for you. A quick video walkthrough of the calibration process is available at https://www.youtube.com/watch?v=W3TnQd9JMl4
+This is **experimental software** and may not work for your setup. It's well-tested for the Rift with Vive trackers though, with a community of a few hundred users ([Discord][]). It also seems to work for various HMDs (Windows MR, Rift) with Vive controllers and Knuckles prototypes. A quick video of how this works using an old version (~v0.3) is available at https://www.youtube.com/watch?v=W3TnQd9JMl4.
 
-## Usage
+[Discord]: https://discord.gg/m7g2Wyj
+
+### Install
+
+Before following the directions below, download and run the installer for the [latest release](https://github.com/pushrax/OpenVR-SpaceCalibrator/releases). This will automatically set up SteamVR for use with multiple tracking systems (`activateMultipleDrivers: true`).
+
+### Usage
+
+Once Space Calibrator has a calibration, it works in the background to keep your devices configured correctly. Since v0.8, everything aside from creating the calibration is automated.
 
 ### Calibration
 
-If you don't already run a setup with multiple device types, see [Setting up SteamVR](#setting-up-steamvr).
+As part of first time setup, or when you make a change to your space (e.g. move a sensor), and occasionally as the calibration drifts over time (consumer VR tracking isn't perfectly stable), you'll need to run a calibration:
 
-1. Download and unzip the [latest release](https://github.com/pushrax/OpenVR-SpaceCalibrator/releases) of OpenVR-SpaceCalibrator.
-2. Run SteamVR, and turn on your Touch controllers and only one Vive device to use for calibration.
-3. Run OpenVR-SpaceCalibrator.
-4. Hold the left Touch controller and your Vive device in your left hand securely, like they're glued together.
-5. Click "Start Calibration"
-6. Wave your left hand around, like you're calibrating the compass on your phone. You want to get as many orientations as possible.
-7. Done! A profile will be saved automatically. You can turn on the rest of your Vive devices now.
+1. Copy the chaperone/guardian bounds from your HMD's play space. This doesn't need to be run if your HMD's play space hasn't changed since last time you copied it. __Example:__ if you're using the Rift with Vive trackers and you bump a Vive lighthouse, or if the calibration has just drifted a little, you likely don't need to run this step, but if you bump an Oculus sensor you will (after running Oculus guardian setup again).
+    1. Run SteamVR, with only devices from your HMD's tracking system powered on. __Example:__ for Rift with Vive trackers, don't turn on the trackers yet.
+    2. Confirm your chaperone/guardian is set up with the walls in the right place. If you change it later, you need to run step again.
+    3. Open SPACE CAL in the SteamVR dashboard overlay.
+    4. Click `Copy Chaperone Bounds to profile`
 
-Next time you run SteamVR, open OpenVR-SpaceCalibrator and it will load the calibration automatically and apply it devices you turn on.
+2. Calibrate devices.
+    1. Open SteamVR if you haven't already. Turn on some or all your devices.
+    2. Open SPACE CAL in the SteamVR dashboard overlay.
+    3. Select one device from the reference space on the left and one device from the target space on the right. If you turned on multiple devices from one space and can't tell which one is selected, click "Identify selected devices" to blink an LED or vibrate it. __Example:__ for Rift with Vive trackers, you'll see the Touch controllers on the left, and Vive trackers on the right. __Pro tip:__ if you turn on just one Vive tracker, you don't have to figure out which one is selected.
+    4. Hold these two devices in one hand, like they're glued together. If they slip, calibration won't work as well.
+    5. Click `Start Calibration`
+    6. Move and rotate your hand around slowly a few times, like you're calibrating the compass on your phone. You want to sample as many orientations as possible.
+    7. Done! A profile will be saved automatically. If you haven't already, turn on all your devices. Space Calibrator will automatically apply the calibration to devices as they turn on.
 
+### Calibration outside VR
 
-### Setting up SteamVR
-
-Every hardware designer with their own tracking system needs to make a "driver"
-so SteamVR can see their tracking data. SteamVR by default will load only one driver at a time,
-but we can tell it to load all of them by editing the vrsettings config file.
-
-Open `Steam\steamapps\common\SteamVR\resources\settings\default.vrsettings` in a text editor,
-look for the line that has `"activateMultipleDrivers": false` and change the `false` to `true`.
-In some guides online you may also see references to `requireHmd`, this does _not_ need to be changed
-unless you truly want to be able to run without any kind of HMD.
-
-Sometimes when SteamVR updates this file seems to get wiped, if your setup stops working you might
-have to edit the config again.
-
+You can calibrate without using the dashboard overlay by unminimizing Space Calibrator after opening SteamVR (it starts minimized). This is required if you're calibrating for a lone HMD without any devices in its tracking system.
 
 ### Compiling your own build
 
-1. Open `OpenVR-SpaceCalibrator.sln` in Visual Studio 2015 and build.
+Open `OpenVR-SpaceCalibrator.sln` in Visual Studio 2015 and build. There are no external dependencies.
 
-
-## The math
+### The math
 
 See [math.pdf](https://github.com/pushrax/OpenVR-SpaceCalibrator/blob/master/math.pdf) for details.
 If you have some ideas for how to improve the calibration process, let me know!

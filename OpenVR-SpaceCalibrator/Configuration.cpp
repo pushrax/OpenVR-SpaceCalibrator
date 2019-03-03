@@ -104,7 +104,7 @@ static void ParseProfileV2(CalibrationContext &ctx, std::istream &stream)
 		LoadFloatArray(
 			chaperone["standing_center"],
 			(float *) ctx.chaperone.standingCenter.m,
-			sizeof(ctx.chaperone.standingCenter) / sizeof(float)
+			sizeof(ctx.chaperone.standingCenter.m) / sizeof(float)
 		);
 
 		if (!chaperone["geometry"].is<picojson::array>())
@@ -146,13 +146,13 @@ void SaveProfile(CalibrationContext &ctx)
 		chaperone["auto_apply"].set<bool>(ctx.chaperone.autoApply);
 		chaperone["play_space_size"].set<picojson::array>(FloatArray(ctx.chaperone.playSpaceSize.v, 2));
 
-		chaperone["standing_center"].set<picojson::array>(
-			FloatArray((float *) ctx.chaperone.standingCenter.m,
-			sizeof(ctx.chaperone.standingCenter) / sizeof(float)
+		chaperone["standing_center"].set<picojson::array>(FloatArray(
+			(float *) ctx.chaperone.standingCenter.m,
+			sizeof(ctx.chaperone.standingCenter.m) / sizeof(float)
 		));
 
-		chaperone["geometry"].set<picojson::array>(
-			FloatArray((float *) ctx.chaperone.geometry.data(),
+		chaperone["geometry"].set<picojson::array>(FloatArray(
+			(float *) ctx.chaperone.geometry.data(),
 			sizeof(ctx.chaperone.geometry[0]) / sizeof(float) * ctx.chaperone.geometry.size()
 		));
 
