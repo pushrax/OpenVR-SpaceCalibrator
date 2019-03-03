@@ -231,6 +231,8 @@ void RunLoop()
 			}
 		}
 
+		ImGui::GetIO().DisplaySize = ImVec2((float) fboTextureWidth, (float) fboTextureHeight);
+
 		ImGui_ImplGlfw_SetReadMouseFromGlfw(!dashboardVisible);
 		ImGui_ImplOpenGL3_NewFrame();
 		ImGui_ImplGlfw_NewFrame();
@@ -241,16 +243,20 @@ void RunLoop()
 		ImGui::Render();
 
 		glBindFramebuffer(GL_FRAMEBUFFER, fboHandle);
-		glViewport(0, 0, width, height);
+		glViewport(0, 0, fboTextureWidth, fboTextureHeight);
 		glClearColor(0, 0, 0, 1);
 		glClear(GL_COLOR_BUFFER_BIT);
 
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
-		glBindFramebuffer(GL_READ_FRAMEBUFFER, fboHandle);
-		glBlitFramebuffer(0, 0, width, height, 0, 0, width, height, GL_COLOR_BUFFER_BIT, GL_NEAREST);
-		glfwSwapBuffers(glfwWindow);
+
+		if (width && height)
+		{
+			glBindFramebuffer(GL_READ_FRAMEBUFFER, fboHandle);
+			glBlitFramebuffer(0, 0, width, height, 0, 0, width, height, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+			glfwSwapBuffers(glfwWindow);
+		}
 
 		if (dashboardVisible)
 		{
@@ -264,21 +270,27 @@ void RunLoop()
 #endif
 				fboTextureHandle;
 
-			vr::HmdVector2_t mouseScale = { (float) width, (float) height };
+			vr::HmdVector2_t mouseScale = { (float) fboTextureWidth, (float) fboTextureHeight };
 
 			vr::VROverlay()->SetOverlayTexture(overlayMainHandle, &vrTex);
 			vr::VROverlay()->SetOverlayMouseScale(overlayMainHandle, &mouseScale);
 		}
 
-		glfwWaitEventsTimeout(dashboardVisible ? 0.0 : CalCtx.wantedUpdateInterval);
+		const double dashboardInterval = 1.0 / 90.0; // fps
+		double waitEventsTimeout = CalCtx.wantedUpdateInterval;
+
+		if (dashboardVisible && waitEventsTimeout > dashboardInterval)
+			waitEventsTimeout = dashboardInterval;
+
+		glfwWaitEventsTimeout(waitEventsTimeout);
 	}
 }
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPWSTR lpCmdLine, _In_ int nCmdShow)
 {
 	_getcwd(cwd, MAX_PATH);
-	//CreateConsole();
 	HandleCommandLine(lpCmdLine);
+	//CreateConsole();
 
 	if (!glfwInit())
 	{

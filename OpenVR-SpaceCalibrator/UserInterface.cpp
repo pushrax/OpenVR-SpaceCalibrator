@@ -91,6 +91,35 @@ void BuildMainWindow(bool runningInOverlay)
 				CalCtx.validProfile = false;
 			}
 		}
+
+		width = ImGui::GetWindowContentRegionWidth();
+		scale = 1.0f;
+		if (CalCtx.chaperone.valid)
+		{
+			width -= style.FramePadding.x * 2.0f;
+			scale = 0.5;
+		}
+
+		ImGui::Text("");
+		if (ImGui::Button("Copy Chaperone Bounds to profile", ImVec2(width * scale, ImGui::GetTextLineHeight() * 2)))
+		{
+			LoadChaperoneBounds();
+			SaveProfile(CalCtx);
+		}
+
+		if (CalCtx.chaperone.valid)
+		{
+			ImGui::SameLine();
+			if (ImGui::Button("Paste Chaperone Bounds", ImVec2(width * scale, ImGui::GetTextLineHeight() * 2)))
+			{
+				ApplyChaperoneBounds();
+			}
+
+			if (ImGui::Checkbox(" Paste Chaperone Bounds automatically when geometry resets", &CalCtx.chaperone.autoApply))
+			{
+				SaveProfile(CalCtx);
+			}
+		}
 	}
 	else if (CalCtx.state == CalibrationState::Editing)
 	{

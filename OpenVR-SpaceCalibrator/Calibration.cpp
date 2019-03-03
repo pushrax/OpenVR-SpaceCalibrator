@@ -332,6 +332,19 @@ void ScanAndApplyProfile(CalibrationContext &ctx)
 		};
 		Driver.SendBlocking(req);
 	}
+
+	if (ctx.chaperone.valid && ctx.chaperone.autoApply)
+	{
+		uint32_t quadCount = 0;
+		vr::VRChaperoneSetup()->GetLiveCollisionBoundsInfo(nullptr, &quadCount);
+
+		// Heuristic: when SteamVR resets to a blank-ish chaperone, it uses empty geometry,
+		// but manual adjustments (e.g. via a play space mover) will not touch geometry.
+		if (quadCount != ctx.chaperone.geometry.size())
+		{
+			ApplyChaperoneBounds();
+		}
+	}
 }
 
 void StartCalibration()
@@ -460,4 +473,27 @@ void CalibrationTick(double time)
 
 		samples.clear();
 	}
+}
+
+void LoadChaperoneBounds()
+{
+	vr::VRChaperoneSetup()->RevertWorkingCopy();
+
+	uint32_t quadCount = 0;
+	vr::VRChaperoneSetup()->GetLiveCollisionBoundsInfo(nullptr, &quadCount);
+
+	CalCtx.chaperone.geometry.resize(quadCount);
+	vr::VRChaperoneSetup()->GetLiveCollisionBoundsInfo(&CalCtx.chaperone.geometry[0], &quadCount);
+	vr::VRChaperoneSetup()->GetWorkingStandingZeroPoseToRawTrackingPose(&CalCtx.chaperone.standingCenter);
+	vr::VRChaperoneSetup()->GetWorkingPlayAreaSize(&CalCtx.chaperone.playSpaceSize.v[0], &CalCtx.chaperone.playSpaceSize.v[1]);
+	CalCtx.chaperone.valid = true;
+}
+
+void ApplyChaperoneBounds()
+{
+	vr::VRChaperoneSetup()->RevertWorkingCopy();
+	vr::VRChaperoneSetup()->SetWorkingCollisionBoundsInfo(&CalCtx.chaperone.geometry[0], CalCtx.chaperone.geometry.size());
+	vr::VRChaperoneSetup()->SetWorkingStandingZeroPoseToRawTrackingPose(&CalCtx.chaperone.standingCenter);
+	vr::VRChaperoneSetup()->SetWorkingPlayAreaSize(CalCtx.chaperone.playSpaceSize.v[0], CalCtx.chaperone.playSpaceSize.v[1]);
+	vr::VRChaperoneSetup()->CommitWorkingCopy(vr::EChaperoneConfigFile_Live);
 }

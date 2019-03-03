@@ -2,6 +2,7 @@
 
 #include <Eigen/Core>
 #include <openvr.h>
+#include <vector>
 
 enum class CalibrationState
 {
@@ -29,6 +30,15 @@ struct CalibrationContext
 
 	vr::TrackedDevicePose_t devicePoses[vr::k_unMaxTrackedDeviceCount];
 
+	struct Chaperone
+	{
+		bool valid = false;
+		bool autoApply = false;
+		std::vector<vr::HmdQuad_t> geometry;
+		vr::HmdMatrix34_t standingCenter;
+		vr::HmdVector2_t playSpaceSize;
+	} chaperone;
+
 	std::string messages;
 
 	void Message(const std::string &msg)
@@ -43,3 +53,5 @@ extern CalibrationContext CalCtx;
 void InitCalibrator();
 void CalibrationTick(double time);
 void StartCalibration();
+void LoadChaperoneBounds();
+void ApplyChaperoneBounds();

@@ -18,6 +18,29 @@ static std::string ConfigFileName()
 	return vrRuntimeConfigName + "\\..\\..\\..\\config\\01spacecalibrator\\calibration.json";
 }
 
+picojson::array FloatArray(const float *buf, int numFloats)
+{
+	picojson::array arr;
+
+	for (int i = 0; i < numFloats; i++)
+		arr.push_back(picojson::value(double(buf[i])));
+
+	return arr;
+}
+
+void LoadFloatArray(const picojson::value &obj, float *buf, int numFloats)
+{
+	if (!obj.is<picojson::array>())
+		throw std::runtime_error("expected array, got " + obj.to_str());
+
+	auto &arr = obj.get<picojson::array>();
+	if (arr.size() != numFloats)
+		throw std::runtime_error("wrong buffer size");
+
+	for (int i = 0; i < numFloats; i++)
+		buf[i] = (float) arr[i].get<double>();
+}
+
 void LoadProfile(CalibrationContext &ctx)
 {
 	ctx.validProfile = false;
@@ -71,6 +94,33 @@ static void ParseProfileV2(CalibrationContext &ctx, std::istream &stream)
 	ctx.calibratedTranslation(1) = obj["y"].get<double>();
 	ctx.calibratedTranslation(2) = obj["z"].get<double>();
 
+	if (obj["chaperone"].is<picojson::object>())
+	{
+		auto chaperone = obj["chaperone"].get<picojson::object>();
+		ctx.chaperone.autoApply = chaperone["auto_apply"].get<bool>();
+
+		LoadFloatArray(chaperone["play_space_size"], ctx.chaperone.playSpaceSize.v, 2);
+
+		LoadFloatArray(
+			chaperone["standing_center"],
+			(float *) ctx.chaperone.standingCenter.m,
+			sizeof(ctx.chaperone.standingCenter) / sizeof(float)
+		);
+
+		if (!chaperone["geometry"].is<picojson::array>())
+			throw std::runtime_error("chaperone geometry is not an array");
+
+		auto &geometry = chaperone["geometry"].get<picojson::array>();
+
+		if (geometry.size() > 0)
+		{
+			ctx.chaperone.geometry.resize(geometry.size() * sizeof(float) / sizeof(ctx.chaperone.geometry[0]));
+			LoadFloatArray(chaperone["geometry"], (float *) ctx.chaperone.geometry.data(), geometry.size());
+
+			ctx.chaperone.valid = true;
+		}
+	}
+
 	ctx.validProfile = true;
 }
 
@@ -89,6 +139,25 @@ void SaveProfile(CalibrationContext &ctx)
 	profile["x"].set<double>(ctx.calibratedTranslation(0));
 	profile["y"].set<double>(ctx.calibratedTranslation(1));
 	profile["z"].set<double>(ctx.calibratedTranslation(2));
+
+	if (ctx.chaperone.valid)
+	{
+		picojson::object chaperone;
+		chaperone["auto_apply"].set<bool>(ctx.chaperone.autoApply);
+		chaperone["play_space_size"].set<picojson::array>(FloatArray(ctx.chaperone.playSpaceSize.v, 2));
+
+		chaperone["standing_center"].set<picojson::array>(
+			FloatArray((float *) ctx.chaperone.standingCenter.m,
+			sizeof(ctx.chaperone.standingCenter) / sizeof(float)
+		));
+
+		chaperone["geometry"].set<picojson::array>(
+			FloatArray((float *) ctx.chaperone.geometry.data(),
+			sizeof(ctx.chaperone.geometry[0]) / sizeof(float) * ctx.chaperone.geometry.size()
+		));
+
+		profile["chaperone"].set<picojson::object>(chaperone);
+	}
 
 	picojson::value profileV;
 	profileV.set<picojson::object>(profile);
