@@ -20,9 +20,8 @@ As part of first time setup, or when you make a change to your space (e.g. move 
 
 1. Copy the chaperone/guardian bounds from your HMD's play space. This doesn't need to be run if your HMD's play space hasn't changed since last time you copied it. __Example:__ if you're using the Rift with Vive trackers and you bump a Vive lighthouse, or if the calibration has just drifted a little, you likely don't need to run this step, but if you bump an Oculus sensor you will (after running Oculus guardian setup again).
     1. Run SteamVR, with only devices from your HMD's tracking system powered on. __Example:__ for Rift with Vive trackers, don't turn on the trackers yet.
-    2. Confirm your chaperone/guardian is set up with the walls in the right place. If you change it later, you need to run step again.
-    3. Open SPACE CAL in the SteamVR dashboard overlay.
-    4. Click `Copy Chaperone Bounds to profile`
+    2. Open SPACE CAL in the SteamVR dashboard overlay.
+    3. Click `Copy Chaperone Bounds to profile`. __Note:__ in the future when you need to update your chaperone/guardian setup, before doing so uncheck "Paste Chaperone Bounds automatically when geometry resets" in SPACE CAL, or it might overwrite your new chaperone with the old one! When you're finished editing, come back to SPACE CAL, copy the new bounds, then check the checkbox.
 
 2. Calibrate devices.
     1. Open SteamVR if you haven't already. Turn on some or all your devices.

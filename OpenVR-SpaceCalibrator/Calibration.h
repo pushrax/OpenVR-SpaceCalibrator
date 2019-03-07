@@ -28,6 +28,10 @@ struct CalibrationContext
 	double timeLastTick = 0, timeLastScan = 0;
 	double wantedUpdateInterval = 1.0;
 
+	Eigen::Matrix<double, 24, 24> AtA;
+	Eigen::Matrix<double, 24, 1> Atb;
+	int samples = 0;
+
 	vr::TrackedDevicePose_t devicePoses[vr::k_unMaxTrackedDeviceCount];
 
 	struct Chaperone

@@ -20,20 +20,17 @@ void InitCalibrator()
 
 struct Pose
 {
-	Eigen::Matrix3d rot;
-	Eigen::Vector3d trans;
+	Eigen::Matrix4d m = Eigen::Matrix4d::Identity();
 
 	Pose() { }
 	Pose(vr::HmdMatrix34_t hmdMatrix)
 	{
-		for (int i = 0; i < 3; i++) {
-			for (int j = 0; j < 3; j++) {
-				rot(i,j) = hmdMatrix.m[i][j];
+		for (int row = 0; row < 3; row++) {
+			for (int col = 0; col < 4; col++) {
+				m(row, col) = hmdMatrix.m[row][col];
 			}
 		}
-		trans = Eigen::Vector3d(hmdMatrix.m[0][3], hmdMatrix.m[1][3], hmdMatrix.m[2][3]);
 	}
-	Pose(double x, double y, double z) : trans(Eigen::Vector3d(x,y,z)) { }
 };
 
 struct Sample
@@ -42,12 +39,6 @@ struct Sample
 	bool valid;
 	Sample() : valid(false) { }
 	Sample(Pose ref, Pose target) : valid(true), ref(ref), target(target) { }
-};
-
-struct DSample
-{
-	bool valid;
-	Eigen::Vector3d ref, target;
 };
 
 bool StartsWith(const std::string &str, const std::string &prefix)
@@ -64,142 +55,6 @@ bool EndsWith(const std::string &str, const std::string &suffix)
 		return false;
 
 	return str.compare(str.length() - suffix.length(), suffix.length(), suffix) == 0;
-}
-
-Eigen::Vector3d AxisFromRotationMatrix3(Eigen::Matrix3d rot)
-{
-	return Eigen::Vector3d(rot(2,1) - rot(1,2), rot(0,2) - rot(2,0), rot(1,0) - rot(0,1));
-}
-
-double AngleFromRotationMatrix3(Eigen::Matrix3d rot)
-{
-	return acos((rot(0,0) + rot(1,1) + rot(2,2) - 1.0) / 2.0);
-}
-
-DSample DeltaRotationSamples(Sample s1, Sample s2)
-{
-	// Difference in rotation between samples.
-	auto dref = s1.ref.rot * s2.ref.rot.transpose();
-	auto dtarget = s1.target.rot * s2.target.rot.transpose();
-
-	// When stuck together, the two tracked objects rotate as a pair,
-	// therefore their axes of rotation must be equal between any given pair of samples.
-	DSample ds;
-	ds.ref = AxisFromRotationMatrix3(dref);
-	ds.target = AxisFromRotationMatrix3(dtarget);
-
-	// Reject samples that were too close to each other.
-	auto refA = AngleFromRotationMatrix3(dref);
-	auto targetA = AngleFromRotationMatrix3(dtarget);
-	ds.valid = refA > 0.4 && targetA > 0.4 && ds.ref.norm() > 0.01 && ds.target.norm() > 0.01;
-
-	ds.ref.normalize();
-	ds.target.normalize();
-	return ds;
-}
-
-Eigen::Vector3d CalibrateRotation(const std::vector<Sample> &samples)
-{
-	std::vector<DSample> deltas;
-
-	for (size_t i = 0; i < samples.size(); i++)
-	{
-		for (size_t j = 0; j < i; j++)
-		{
-			auto delta = DeltaRotationSamples(samples[i], samples[j]);
-			if (delta.valid)
-				deltas.push_back(delta);
-		}
-	}
-	char buf[256];
-	snprintf(buf, sizeof buf, "Got %zd samples with %zd delta samples\n", samples.size(), deltas.size());
-	CalCtx.Message(buf);
-
-	// Kabsch algorithm
-
-	Eigen::MatrixXd refPoints(deltas.size(), 3), targetPoints(deltas.size(), 3);
-	Eigen::Vector3d refCentroid(0,0,0), targetCentroid(0,0,0);
-
-	for (size_t i = 0; i < deltas.size(); i++)
-	{
-		refPoints.row(i) = deltas[i].ref;
-		refCentroid += deltas[i].ref;
-
-		targetPoints.row(i) = deltas[i].target;
-		targetCentroid += deltas[i].target;
-	}
-
-	refCentroid /= (double) deltas.size();
-	targetCentroid /= (double) deltas.size();
-
-	for (size_t i = 0; i < deltas.size(); i++)
-	{
-		refPoints.row(i) -= refCentroid;
-		targetPoints.row(i) -= targetCentroid;
-	}
-
-	auto crossCV = refPoints.transpose() * targetPoints;
-
-	Eigen::BDCSVD<Eigen::MatrixXd> bdcsvd;
-	auto svd = bdcsvd.compute(crossCV, Eigen::ComputeThinU | Eigen::ComputeThinV);
-
-	Eigen::Matrix3d i = Eigen::Matrix3d::Identity();
-	if ((svd.matrixU() * svd.matrixV().transpose()).determinant() < 0)
-	{
-		i(2,2) = -1;
-	}
-
-	Eigen::Matrix3d rot = svd.matrixV() * i * svd.matrixU().transpose();
-	rot.transposeInPlace();
-
-	Eigen::Vector3d euler = rot.eulerAngles(2, 1, 0) * 180.0 / EIGEN_PI;
-
-	snprintf(buf, sizeof buf, "Calibrated rotation: yaw=%.2f pitch=%.2f roll=%.2f\n", euler[1], euler[2], euler[0]);
-	CalCtx.Message(buf);
-	return euler;
-}
-
-Eigen::Vector3d CalibrateTranslation(const std::vector<Sample> &samples)
-{
-	std::vector<std::pair<Eigen::Vector3d, Eigen::Matrix3d>> deltas;
-
-	for (size_t i = 0; i < samples.size(); i++)
-	{
-		for (size_t j = 0; j < i; j++)
-		{
-			auto QAi = samples[i].ref.rot.transpose();
-			auto QAj = samples[j].ref.rot.transpose();
-			auto dQA = QAj - QAi;
-			auto CA = QAj * (samples[j].ref.trans - samples[j].target.trans) - QAi * (samples[i].ref.trans - samples[i].target.trans);
-			deltas.push_back(std::make_pair(CA, dQA));
-
-			auto QBi = samples[i].target.rot.transpose();
-			auto QBj = samples[j].target.rot.transpose();
-			auto dQB = QBj - QBi;
-			auto CB = QBj * (samples[j].ref.trans - samples[j].target.trans) - QBi * (samples[i].ref.trans - samples[i].target.trans);
-			deltas.push_back(std::make_pair(CB, dQB));
-		}
-	}
-
-	Eigen::VectorXd constants(deltas.size() * 3);
-	Eigen::MatrixXd coefficients(deltas.size() * 3, 3);
-
-	for (size_t i = 0; i < deltas.size(); i++)
-	{
-		for (int axis = 0; axis < 3; axis++)
-		{
-			constants(i * 3 + axis) = deltas[i].first(axis);
-			coefficients.row(i * 3 + axis) = deltas[i].second.row(axis);
-		}
-	}
-
-	Eigen::Vector3d trans = coefficients.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(constants);
-	auto transcm = trans * 100.0;
-
-	char buf[256];
-	snprintf(buf, sizeof buf, "Calibrated translation x=%.2f y=%.2f z=%.2f\n", transcm[0], transcm[1], transcm[2]);
-	CalCtx.Message(buf);
-	return transcm;
 }
 
 Sample CollectSample(const CalibrationContext &ctx)
@@ -233,15 +88,19 @@ Sample CollectSample(const CalibrationContext &ctx)
 	);
 }
 
-vr::HmdQuaternion_t VRRotationQuat(Eigen::Vector3d eulerdeg)
+Eigen::Quaterniond RotationQuat(Eigen::Vector3d eulerdeg)
 {
 	auto euler = eulerdeg * EIGEN_PI / 180.0;
 
-	Eigen::Quaterniond rotQuat =
+	return
 		Eigen::AngleAxisd(euler(0), Eigen::Vector3d::UnitZ()) *
 		Eigen::AngleAxisd(euler(1), Eigen::Vector3d::UnitY()) *
 		Eigen::AngleAxisd(euler(2), Eigen::Vector3d::UnitX());
+}
 
+vr::HmdQuaternion_t VRRotationQuat(Eigen::Vector3d eulerdeg)
+{
+	auto rotQuat = RotationQuat(eulerdeg);
 	vr::HmdQuaternion_t vrRotQuat;
 	vrRotQuat.x = rotQuat.coeffs()[0];
 	vrRotQuat.y = rotQuat.coeffs()[1];
@@ -360,7 +219,7 @@ void CalibrationTick(double time)
 		return;
 
 	auto &ctx = CalCtx;
-	if ((time - ctx.timeLastTick) < 0.05)
+	if ((time - ctx.timeLastTick) < 0.02)
 		return;
 
 	ctx.timeLastTick = time;
@@ -396,36 +255,39 @@ void CalibrationTick(double time)
 
 		if (ctx.referenceID == -1)
 		{
-			CalCtx.Message("Missing reference device\n"); ok = false;
+			ctx.Message("Missing reference device\n"); ok = false;
 		}
 		else if (!ctx.devicePoses[ctx.referenceID].bPoseIsValid)
 		{
-			CalCtx.Message("Reference device is not tracking\n"); ok = false;
+			ctx.Message("Reference device is not tracking\n"); ok = false;
 		}
 
 		if (ctx.targetID == -1)
 		{
-			CalCtx.Message("Missing target device\n"); ok = false;
+			ctx.Message("Missing target device\n"); ok = false;
 		}
 		else if (!ctx.devicePoses[ctx.targetID].bPoseIsValid)
 		{
-			CalCtx.Message("Target device is not tracking\n"); ok = false;
+			ctx.Message("Target device is not tracking\n"); ok = false;
 		}
 
 		if (!ok)
 		{
 			ctx.state = CalibrationState::None;
-			CalCtx.Message("Aborting calibration!\n");
+			ctx.Message("Aborting calibration!\n");
 			return;
 		}
 
 		ResetAndDisableOffsets(ctx.targetID);
 		ctx.state = CalibrationState::Rotation;
 		ctx.wantedUpdateInterval = 0.0;
+		ctx.samples = 0;
+		ctx.AtA.setZero();
+		ctx.Atb.setZero();
 
 		char buf[256];
 		snprintf(buf, sizeof buf, "Starting calibration, referenceID=%d targetID=%d\n", ctx.referenceID, ctx.targetID);
-		CalCtx.Message(buf);
+		ctx.Message(buf);
 		return;
 	}
 
@@ -434,45 +296,85 @@ void CalibrationTick(double time)
 	{
 		return;
 	}
-	CalCtx.Message(".");
+	ctx.Message(".");
 
-	const int totalSamples = 100;
-	static std::vector<Sample> samples;
-	samples.push_back(sample);
+	// For all samples,
+	//   sample.target.m * L = G * sample.ref.m
+	//
+	// L and G have 12 unknowns each, a rotation mat3x3 and translation vec3,
+	// when multipled we have 12 equations in 24 unknowns.
 
-	if (samples.size() == totalSamples)
+	Eigen::Matrix<double, 4, 6> eq;
+
+	// Multiply out all the equations
+	// A^A * A * x = A^T * b, solve for x
+	// In x, the first 4x3 has coefficients for G, last 4x3 has coefficients for L
+	for (int b = 0; b < 3; b++)
 	{
-		CalCtx.Message("\n");
-		if (ctx.state == CalibrationState::Rotation)
+		for (int e = 0; e < 4; e++)
 		{
-			ctx.calibratedRotation = CalibrateRotation(samples);
+			eq.setZero();
 
-			auto vrRotQuat = VRRotationQuat(ctx.calibratedRotation);
+			eq.block<4, 1>(0, b) = sample.ref.m.block<4, 1>(0, e);
+			eq.block<1, 3>(e, 3) = -sample.target.m.block<1, 3>(b, 0);
 
-			protocol::Request req(protocol::RequestSetDeviceTransform);
-			req.setDeviceTransform = { ctx.targetID, true, vrRotQuat };
-			Driver.SendBlocking(req);
+			double rhs = e == 3 ? sample.target.m(b, 3) : 0.0;
 
-			ctx.state = CalibrationState::Translation;
+			// Enter equation into the least squares system
+			for (int i = 0; i < 24; ++i)
+			{
+				for (int j = 0; j < 24; ++j)
+					ctx.AtA(i, j) += eq(i) * eq(j);
+
+				ctx.Atb(i) += eq(i) * rhs;
+			}
 		}
-		else if (ctx.state == CalibrationState::Translation)
-		{
-			ctx.calibratedTranslation = CalibrateTranslation(samples);
-
-			auto vrTrans = VRTranslationVec(ctx.calibratedTranslation);
-
-			protocol::Request req(protocol::RequestSetDeviceTransform);
-			req.setDeviceTransform = { ctx.targetID, true, vrTrans };
-			Driver.SendBlocking(req);
-
-			SaveProfile(ctx);
-			CalCtx.Message("Finished calibration, profile saved\n");
-
-			ctx.state = CalibrationState::None;
-		}
-
-		samples.clear();
 	}
+
+	if (++ctx.samples < 205)
+		return;
+
+	ctx.Message("\n");
+
+	// AtA * solved = Atb
+	auto solved = ctx.AtA.fullPivLu().solve(ctx.Atb);
+
+	// Pull first 4x3 and rotate, this is G
+	Eigen::Matrix4d refToTargetSpace = Eigen::Matrix4d::Identity();
+	for (int i = 0; i < 3; i++)
+		for (int j = 0; j < 4; j++)
+			refToTargetSpace(i, j) = solved(i * 4 + j);
+
+	auto rot = refToTargetSpace.block<3, 3>(0, 0);
+	// TODO: polar decomposition of rot may improve precision
+	Eigen::Vector3d euler = -rot.eulerAngles(2, 1, 0) * 180.0 / EIGEN_PI;
+	euler(0) = -euler(0); // SteamVR forward is -Z, so roll is inverted
+
+	char buf[256];
+	snprintf(buf, sizeof buf, "Delta rotation yaw=%.2f pitch=%.2f roll=%.2f\n", euler[1], euler[2], euler[0]);
+	ctx.Message(buf);
+
+	Eigen::Vector3d trans = refToTargetSpace.block<3, 1>(0, 3);
+	trans = RotationQuat(euler) * trans;
+	auto transcm = -trans * 100.0;
+
+	snprintf(buf, sizeof buf, "Delta translation x=%.2f y=%.2f z=%.2f\n", transcm[0], transcm[1], transcm[2]);
+	ctx.Message(buf);
+
+	ctx.calibratedRotation = euler;
+	ctx.calibratedTranslation = transcm;
+
+	auto vrRotQuat = VRRotationQuat(ctx.calibratedRotation);
+	auto vrTrans = VRTranslationVec(ctx.calibratedTranslation);
+
+	protocol::Request req(protocol::RequestSetDeviceTransform);
+	req.setDeviceTransform = { ctx.targetID, true, vrTrans, vrRotQuat };
+	Driver.SendBlocking(req);
+
+	SaveProfile(ctx);
+	ctx.Message("Finished calibration, profile saved\n");
+
+	ctx.state = CalibrationState::None;
 }
 
 void LoadChaperoneBounds()

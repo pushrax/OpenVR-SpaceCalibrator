@@ -203,7 +203,8 @@ void RunLoop()
 			vr::VREvent_t vrEvent;
 			while (vr::VROverlay()->PollNextOverlayEvent(overlayMainHandle, &vrEvent, sizeof(vrEvent)))
 			{
-				switch (vrEvent.eventType) {
+				switch (vrEvent.eventType)
+				{
 				case vr::VREvent_MouseMove:
 					io.MousePos.x = vrEvent.data.mouse.x;
 					io.MousePos.y = vrEvent.data.mouse.y;
@@ -218,7 +219,8 @@ void RunLoop()
 					io.MouseWheelH += vrEvent.data.scroll.xdelta * 360.0f * 8.0f;
 					io.MouseWheel += vrEvent.data.scroll.ydelta * 360.0f * 8.0f;
 					break;
-				case vr::VREvent_KeyboardDone: {
+				case vr::VREvent_KeyboardDone:
+				{
 					char buf[0x400];
 					vr::VROverlay()->GetKeyboardText(buf, sizeof buf);
 					ImGui::SetActiveText(buf, sizeof buf);
@@ -260,20 +262,14 @@ void RunLoop()
 
 		if (dashboardVisible)
 		{
+			vr::HmdVector2_t mouseScale = { (float) fboTextureWidth, (float) fboTextureHeight };
+			vr::VROverlay()->SetOverlayMouseScale(overlayMainHandle, &mouseScale);
+
 			vr::Texture_t vrTex;
 			vrTex.eType = vr::TextureType_OpenGL;
 			vrTex.eColorSpace = vr::ColorSpace_Linear;
-
-			vrTex.handle = (void *)
-#if defined _WIN64 || defined _LP64
-			(uint64_t)
-#endif
-				fboTextureHandle;
-
-			vr::HmdVector2_t mouseScale = { (float) fboTextureWidth, (float) fboTextureHeight };
-
+			vrTex.handle = (void *)(uint64_t)fboTextureHandle;
 			vr::VROverlay()->SetOverlayTexture(overlayMainHandle, &vrTex);
-			vr::VROverlay()->SetOverlayMouseScale(overlayMainHandle, &mouseScale);
 		}
 
 		const double dashboardInterval = 1.0 / 90.0; // fps
