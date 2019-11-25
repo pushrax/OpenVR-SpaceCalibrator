@@ -119,7 +119,7 @@ void TryCreateVROverlay()
 
 	vr::VROverlay()->SetOverlayWidthInMeters(overlayMainHandle, 3.0f);
 	vr::VROverlay()->SetOverlayInputMethod(overlayMainHandle, vr::VROverlayInputMethod_Mouse);
-	vr::VROverlay()->SetOverlayFlag(overlayMainHandle, vr::VROverlayFlags_SendVRScrollEvents, true);
+	vr::VROverlay()->SetOverlayFlag(overlayMainHandle, vr::VROverlayFlags_SendVRDiscreteScrollEvents, true);
 
 	std::string iconPath = cwd;
 	iconPath += "\\icon.png";
@@ -192,10 +192,11 @@ void RunLoop()
 				char buf[0x400];
 				ImGui::GetActiveText(buf, sizeof buf);
 				buf[0x3ff] = 0;
+				uint32_t unFlags = 0; // EKeyboardFlags 
 
 				vr::VROverlay()->ShowKeyboardForOverlay(
 					overlayMainHandle, vr::k_EGamepadTextInputModeNormal, vr::k_EGamepadTextInputLineModeSingleLine,
-					"Space Calibrator Overlay", sizeof buf, buf, false, 0
+					unFlags, "Space Calibrator Overlay", sizeof buf, buf, 0
 				);
 				keyboardOpen = true;
 			}
@@ -214,7 +215,7 @@ void RunLoop()
 				case vr::VREvent_MouseButtonUp:
 					io.MouseDown[vrEvent.data.mouse.button == vr::VRMouseButton_Left ? 0 : 1] = false;
 					break;
-				case vr::VREvent_Scroll:
+				case vr::VREvent_ScrollDiscrete:
 					io.MouseWheelH += vrEvent.data.scroll.xdelta * 360.0f * 8.0f;
 					io.MouseWheel += vrEvent.data.scroll.ydelta * 360.0f * 8.0f;
 					break;
@@ -342,7 +343,11 @@ static void HandleCommandLine(LPWSTR lpCmdLine)
 		vr::VR_Init(&vrErr, vr::VRApplication_Utility);
 		if (vrErr == vr::VRInitError_None)
 		{
-			printf("%s", vr::VR_RuntimePath());
+			char cruntimePath[MAX_PATH] = { 0 };
+			unsigned int pathLen;
+			vr::VR_GetRuntimePath(cruntimePath, MAX_PATH, &pathLen);
+
+			printf("%s", cruntimePath);
 			vr::VR_Shutdown();
 			exit(0);
 		}

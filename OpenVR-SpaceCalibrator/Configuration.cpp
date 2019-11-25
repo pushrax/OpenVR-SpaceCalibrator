@@ -14,7 +14,10 @@ static void ParseProfileV2(CalibrationContext &ctx, std::istream &stream);
 
 static std::string ConfigFileName()
 {
-	std::string vrRuntimeConfigName = vr::VR_RuntimePath();
+	char cruntimePath[MAX_PATH] = { 0 };
+	unsigned int pathLen;
+	vr::VR_GetRuntimePath(cruntimePath, MAX_PATH, &pathLen);
+	std::string vrRuntimeConfigName(cruntimePath);
 	return vrRuntimeConfigName + "\\..\\..\\..\\config\\01spacecalibrator\\calibration.json";
 }
 
@@ -200,9 +203,7 @@ static void UpgradeProfileV1(CalibrationContext &ctx)
 
 void WriteActivateMultipleDriversToConfig()
 {
-	std::string configPath = vr::VR_RuntimePath();
-	configPath += "\\..\\..\\..\\config\\steamvr.vrsettings";
-
+	std::string configPath = ConfigFileName();
 	std::ifstream ifile(configPath);
 	if (!ifile.good())
 		throw std::runtime_error("failed to read steamvr.vrsettings");
