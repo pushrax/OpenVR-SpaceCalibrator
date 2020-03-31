@@ -298,7 +298,7 @@ void ScanAndApplyProfile(CalibrationContext &ctx)
 			continue;
 		}
 
-		if (deviceClass == vr::TrackedDeviceClass_TrackingReference || deviceClass == vr::TrackedDeviceClass_HMD)
+		if (/*deviceClass == vr::TrackedDeviceClass_TrackingReference ||*/ deviceClass == vr::TrackedDeviceClass_HMD)
 		{
 			//auto p = ctx.devicePoses[id].mDeviceToAbsoluteTracking.m;
 			//printf("REF %d: %f %f %f\n", id, p[0][3], p[1][3], p[2][3]);
