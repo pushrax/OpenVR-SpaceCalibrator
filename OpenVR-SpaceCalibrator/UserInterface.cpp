@@ -9,7 +9,7 @@
 #include <algorithm>
 #include <imgui/imgui.h>
 
-#define VERSION_STRING "0.8"
+#define VERSION_STRING "0.8.1"
 
 struct VRDevice
 {

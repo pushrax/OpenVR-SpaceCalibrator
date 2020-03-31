@@ -148,6 +148,27 @@ void InitVR()
 	{
 		throw std::runtime_error("OpenVR error: Outdated IVROverlay_Version");
 	}
+
+	vr::EVRSettingsError vrSettingsError;
+	bool multipledrivers = vr::VRSettings()->GetBool(
+		vr::k_pch_SteamVR_Section,
+		vr::k_pch_SteamVR_ActivateMultipleDrivers_Bool,
+		&vrSettingsError);
+	if (vrSettingsError != vr::VRSettingsError_None)
+	{
+		std::string err = "Could not read \""
+			+ std::string(vr::k_pch_SteamVR_ActivateMultipleDrivers_Bool)
+			+ "\" setting: "
+			+ vr::VRSettings()->GetSettingsErrorNameFromEnum(vrSettingsError);
+		throw std::runtime_error(err);
+	}
+	if (!multipledrivers)
+	{
+		vr::VRSettings()->SetBool(
+			vr::k_pch_SteamVR_Section,
+			vr::k_pch_SteamVR_ActivateMultipleDrivers_Bool,
+			true);
+	}
 }
 
 void RunLoop()
@@ -417,7 +438,7 @@ static void HandleCommandLine(LPWSTR lpCmdLine)
 		vr::VR_Shutdown();
 		exit(-2);
 	}
-	else if (lstrcmp(lpCmdLine, L"-activatemultipledrivers") == 0)
+	else if (lstrcmp(lpCmdLine, L"-activatemultipledriversManual") == 0)
 	{
 		int ret = -2;
 		auto vrErr = vr::VRInitError_None;
@@ -432,6 +453,42 @@ static void HandleCommandLine(LPWSTR lpCmdLine)
 			catch (std::runtime_error &e)
 			{
 				std::cerr << "Failed to set activateMultipleDrivers: " << e.what() << std::endl;
+			}
+		}
+		else
+		{
+			fprintf(stderr, "Failed to initialize OpenVR: %s\n", vr::VR_GetVRInitErrorAsEnglishDescription(vrErr));
+		}
+		vr::VR_Shutdown();
+		exit(ret);
+	}
+	else if (lstrcmp(lpCmdLine, L"-activatemultipledrivers") == 0)
+	{
+		int ret = -2;
+		auto vrErr = vr::VRInitError_None;
+		vr::VR_Init(&vrErr, vr::VRApplication_Utility);
+		if (vrErr == vr::VRInitError_None)
+		{
+			vr::EVRSettingsError vrSettingsError;
+			bool multipledrivers = vr::VRSettings()->GetBool(
+				vr::k_pch_SteamVR_Section,
+				vr::k_pch_SteamVR_ActivateMultipleDrivers_Bool,
+				&vrSettingsError);
+			if (vrSettingsError != vr::VRSettingsError_None)
+			{
+				std::string err = "Could not read \""
+					+ std::string(vr::k_pch_SteamVR_ActivateMultipleDrivers_Bool)
+					+ "\" setting: "
+					+ vr::VRSettings()->GetSettingsErrorNameFromEnum(vrSettingsError);
+				std::cerr << "Failed to set activateMultipleDrivers: " << err << std::endl;
+			}
+			else if (!multipledrivers)
+			{
+				vr::VRSettings()->SetBool(
+					vr::k_pch_SteamVR_Section,
+					vr::k_pch_SteamVR_ActivateMultipleDrivers_Bool,
+					true);
+				ret = 0;
 			}
 		}
 		else
