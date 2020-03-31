@@ -192,10 +192,11 @@ void RunLoop()
 				char buf[0x400];
 				ImGui::GetActiveText(buf, sizeof buf);
 				buf[0x3ff] = 0;
+				uint32_t unFlags = 0; // EKeyboardFlags 
 
 				vr::VROverlay()->ShowKeyboardForOverlay(
 					overlayMainHandle, vr::k_EGamepadTextInputModeNormal, vr::k_EGamepadTextInputLineModeSingleLine,
-					"Space Calibrator Overlay", sizeof buf, buf, false, 0
+					unFlags, "Space Calibrator Overlay", sizeof buf, buf, 0
 				);
 				keyboardOpen = true;
 			}
