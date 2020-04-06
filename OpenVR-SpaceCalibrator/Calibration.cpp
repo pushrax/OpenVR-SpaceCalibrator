@@ -273,9 +273,12 @@ void ResetAndDisableOffsets(uint32_t id)
 	Driver.SendBlocking(req);
 }
 
+static_assert(vr::k_unTrackedDeviceIndex_Hmd == 0, "HMD index expected to be 0");
+
 void ScanAndApplyProfile(CalibrationContext &ctx)
 {
 	char buffer[vr::k_unMaxPropertyStringSize];
+	ctx.enabled = ctx.validProfile;
 
 	for (uint32_t id = 0; id < vr::k_unMaxTrackedDeviceCount; ++id)
 	{
@@ -292,16 +295,8 @@ void ScanAndApplyProfile(CalibrationContext &ctx)
 			continue;
 		}*/
 
-		if (!ctx.validProfile)
+		if (!ctx.enabled)
 		{
-			ResetAndDisableOffsets(id);
-			continue;
-		}
-
-		if (/*deviceClass == vr::TrackedDeviceClass_TrackingReference ||*/ deviceClass == vr::TrackedDeviceClass_HMD)
-		{
-			//auto p = ctx.devicePoses[id].mDeviceToAbsoluteTracking.m;
-			//printf("REF %d: %f %f %f\n", id, p[0][3], p[1][3], p[2][3]);
 			ResetAndDisableOffsets(id);
 			continue;
 		}
@@ -316,6 +311,21 @@ void ScanAndApplyProfile(CalibrationContext &ctx)
 		}
 
 		std::string trackingSystem(buffer);
+
+		if (id == vr::k_unTrackedDeviceIndex_Hmd)
+		{
+			//auto p = ctx.devicePoses[id].mDeviceToAbsoluteTracking.m;
+			//printf("HMD %d: %f %f %f\n", id, p[0][3], p[1][3], p[2][3]);
+
+			if (trackingSystem != ctx.referenceTrackingSystem)
+			{
+				// Currently using an HMD with a different tracking system than the calibration.
+				ctx.enabled = false;
+			}
+
+			ResetAndDisableOffsets(id);
+			continue;
+		}
 
 		if (trackingSystem != ctx.targetTrackingSystem)
 		{
@@ -333,7 +343,7 @@ void ScanAndApplyProfile(CalibrationContext &ctx)
 		Driver.SendBlocking(req);
 	}
 
-	if (ctx.chaperone.valid && ctx.chaperone.autoApply)
+	if (ctx.enabled && ctx.chaperone.valid && ctx.chaperone.autoApply)
 	{
 		uint32_t quadCount = 0;
 		vr::VRChaperoneSetup()->GetLiveCollisionBoundsInfo(nullptr, &quadCount);
@@ -465,6 +475,7 @@ void CalibrationTick(double time)
 			req.setDeviceTransform = { ctx.targetID, true, vrTrans };
 			Driver.SendBlocking(req);
 
+			ctx.validProfile = true;
 			SaveProfile(ctx);
 			CalCtx.Message("Finished calibration, profile saved\n");
 

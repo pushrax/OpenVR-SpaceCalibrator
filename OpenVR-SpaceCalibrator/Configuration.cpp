@@ -133,6 +133,12 @@ void SaveProfile(CalibrationContext &ctx)
 
 	std::ofstream file(ConfigFileName());
 
+	if (!ctx.validProfile)
+	{
+		file << "[]";
+		return;
+	}
+
 	picojson::object profile;
 	profile["reference_tracking_system"].set<std::string>(ctx.referenceTrackingSystem);
 	profile["target_tracking_system"].set<std::string>(ctx.targetTrackingSystem);
@@ -172,8 +178,6 @@ void SaveProfile(CalibrationContext &ctx)
 	profilesV.set<picojson::array>(profiles);
 
 	file << profilesV.serialize(true);
-
-	ctx.validProfile = true;
 }
 
 static void UpgradeProfileV1(CalibrationContext &ctx)

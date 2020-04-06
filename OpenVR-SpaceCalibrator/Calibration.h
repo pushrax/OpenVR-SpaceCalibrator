@@ -24,6 +24,7 @@ struct CalibrationContext
 	std::string referenceTrackingSystem;
 	std::string targetTrackingSystem;
 
+	bool enabled = false;
 	bool validProfile = false;
 	double timeLastTick = 0, timeLastScan = 0;
 	double wantedUpdateInterval = 1.0;
@@ -45,6 +46,21 @@ struct CalibrationContext
 	{
 		messages += msg;
 		std::cerr << msg;
+	}
+
+	void Clear()
+	{
+		chaperone.geometry.clear();
+		chaperone.standingCenter = vr::HmdMatrix34_t();
+		chaperone.playSpaceSize = vr::HmdVector2_t();
+		chaperone.valid = false;
+
+		calibratedRotation = Eigen::Vector3d();
+		calibratedTranslation = Eigen::Vector3d();
+		referenceTrackingSystem = "";
+		targetTrackingSystem = "";
+		enabled = false;
+		validProfile = false;
 	}
 };
 

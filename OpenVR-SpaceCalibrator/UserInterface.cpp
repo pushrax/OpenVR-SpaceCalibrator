@@ -62,6 +62,12 @@ void BuildMainWindow(bool runningInOverlay)
 
 	if (CalCtx.state == CalibrationState::None)
 	{
+		if (CalCtx.validProfile && !CalCtx.enabled)
+		{
+			ImGui::TextColored(ImColor(0.8f, 0.2f, 0.2f), "Reference (%s) HMD not detected, profile disabled", CalCtx.referenceTrackingSystem.c_str());
+			ImGui::Text("");
+		}
+
 		float width = ImGui::GetWindowContentRegionWidth(), scale = 1.0f;
 		if (CalCtx.validProfile)
 		{
@@ -86,9 +92,8 @@ void BuildMainWindow(bool runningInOverlay)
 			ImGui::SameLine();
 			if (ImGui::Button("Clear Calibration", ImVec2(width * scale, ImGui::GetTextLineHeight() * 2)))
 			{
-				CalCtx.calibratedRotation = Eigen::Vector3d();
-				CalCtx.calibratedTranslation = Eigen::Vector3d();
-				CalCtx.validProfile = false;
+				CalCtx.Clear();
+				SaveProfile(CalCtx);
 			}
 		}
 
