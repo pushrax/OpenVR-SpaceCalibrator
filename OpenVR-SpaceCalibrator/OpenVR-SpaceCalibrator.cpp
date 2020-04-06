@@ -119,11 +119,43 @@ void TryCreateVROverlay()
 
 	vr::VROverlay()->SetOverlayWidthInMeters(overlayMainHandle, 3.0f);
 	vr::VROverlay()->SetOverlayInputMethod(overlayMainHandle, vr::VROverlayInputMethod_Mouse);
-	vr::VROverlay()->SetOverlayFlag(overlayMainHandle, vr::VROverlayFlags_SendVRScrollEvents, true);
+	vr::VROverlay()->SetOverlayFlag(overlayMainHandle, vr::VROverlayFlags_SendVRDiscreteScrollEvents, true);
 
 	std::string iconPath = cwd;
 	iconPath += "\\icon.png";
 	vr::VROverlay()->SetOverlayFromFile(overlayThumbnailHandle, iconPath.c_str());
+}
+
+void ActivateMultipleDrivers()
+{
+	vr::EVRSettingsError vrSettingsError;
+	bool enabled = vr::VRSettings()->GetBool(vr::k_pch_SteamVR_Section, vr::k_pch_SteamVR_ActivateMultipleDrivers_Bool, &vrSettingsError);
+
+	if (vrSettingsError != vr::VRSettingsError_None)
+	{
+		std::string err = "Could not read \"" + std::string(vr::k_pch_SteamVR_ActivateMultipleDrivers_Bool) + "\" setting: "
+			+ vr::VRSettings()->GetSettingsErrorNameFromEnum(vrSettingsError);
+
+		throw std::runtime_error(err);
+	}
+
+	if (!enabled)
+	{
+		vr::VRSettings()->SetBool(vr::k_pch_SteamVR_Section, vr::k_pch_SteamVR_ActivateMultipleDrivers_Bool, true, &vrSettingsError);
+		if (vrSettingsError != vr::VRSettingsError_None)
+		{
+			std::string err = "Could not set \"" + std::string(vr::k_pch_SteamVR_ActivateMultipleDrivers_Bool) + "\" setting: "
+				+ vr::VRSettings()->GetSettingsErrorNameFromEnum(vrSettingsError);
+
+			throw std::runtime_error(err);
+		}
+
+		std::cerr << "Enabled \"" << vr::k_pch_SteamVR_ActivateMultipleDrivers_Bool << "\" setting" << std::endl;
+	}
+	else
+	{
+		std::cerr << "\"" << vr::k_pch_SteamVR_ActivateMultipleDrivers_Bool << "\" setting previously enabled" << std::endl;
+	}
 }
 
 void InitVR()
@@ -148,6 +180,8 @@ void InitVR()
 	{
 		throw std::runtime_error("OpenVR error: Outdated IVROverlay_Version");
 	}
+
+	ActivateMultipleDrivers();
 }
 
 void RunLoop()
@@ -192,10 +226,11 @@ void RunLoop()
 				char buf[0x400];
 				ImGui::GetActiveText(buf, sizeof buf);
 				buf[0x3ff] = 0;
+				uint32_t unFlags = 0; // EKeyboardFlags 
 
 				vr::VROverlay()->ShowKeyboardForOverlay(
 					overlayMainHandle, vr::k_EGamepadTextInputModeNormal, vr::k_EGamepadTextInputLineModeSingleLine,
-					"Space Calibrator Overlay", sizeof buf, buf, false, 0
+					unFlags, "Space Calibrator Overlay", sizeof buf, buf, 0
 				);
 				keyboardOpen = true;
 			}
@@ -214,7 +249,7 @@ void RunLoop()
 				case vr::VREvent_MouseButtonUp:
 					io.MouseDown[vrEvent.data.mouse.button == vr::VRMouseButton_Left ? 0 : 1] = false;
 					break;
-				case vr::VREvent_Scroll:
+				case vr::VREvent_ScrollDiscrete:
 					io.MouseWheelH += vrEvent.data.scroll.xdelta * 360.0f * 8.0f;
 					io.MouseWheel += vrEvent.data.scroll.ydelta * 360.0f * 8.0f;
 					break;
@@ -342,7 +377,11 @@ static void HandleCommandLine(LPWSTR lpCmdLine)
 		vr::VR_Init(&vrErr, vr::VRApplication_Utility);
 		if (vrErr == vr::VRInitError_None)
 		{
-			printf("%s", vr::VR_RuntimePath());
+			char cruntimePath[MAX_PATH] = { 0 };
+			unsigned int pathLen;
+			vr::VR_GetRuntimePath(cruntimePath, MAX_PATH, &pathLen);
+
+			printf("%s", cruntimePath);
 			vr::VR_Shutdown();
 			exit(0);
 		}
@@ -421,12 +460,12 @@ static void HandleCommandLine(LPWSTR lpCmdLine)
 		{
 			try
 			{
-				WriteActivateMultipleDriversToConfig();
+				ActivateMultipleDrivers();
 				ret = 0;
 			}
 			catch (std::runtime_error &e)
 			{
-				std::cerr << "Failed to set activateMultipleDrivers: " << e.what() << std::endl;
+				std::cerr << e.what() << std::endl;
 			}
 		}
 		else

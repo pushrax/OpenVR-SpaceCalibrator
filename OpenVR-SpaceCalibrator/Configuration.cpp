@@ -14,7 +14,10 @@ static void ParseProfileV2(CalibrationContext &ctx, std::istream &stream);
 
 static std::string ConfigFileName()
 {
-	std::string vrRuntimeConfigName = vr::VR_RuntimePath();
+	char cruntimePath[MAX_PATH] = { 0 };
+	unsigned int pathLen;
+	vr::VR_GetRuntimePath(cruntimePath, MAX_PATH, &pathLen);
+	std::string vrRuntimeConfigName(cruntimePath);
 	return vrRuntimeConfigName + "\\..\\..\\..\\config\\01spacecalibrator\\calibration.json";
 }
 
@@ -196,42 +199,4 @@ static void UpgradeProfileV1(CalibrationContext &ctx)
 
 	file.close();
 	std::remove("openvr_space_calibration.txt");
-}
-
-void WriteActivateMultipleDriversToConfig()
-{
-	std::string configPath = vr::VR_RuntimePath();
-	configPath += "\\..\\..\\..\\config\\steamvr.vrsettings";
-
-	std::ifstream ifile(configPath);
-	if (!ifile.good())
-		throw std::runtime_error("failed to read steamvr.vrsettings");
-
-	picojson::value v;
-	std::string err = picojson::parse(v, ifile);
-	if (!err.empty())
-		throw std::runtime_error(err);
-
-	ifile.close();
-
-	if (!v.is<picojson::object>())
-		throw std::runtime_error("steamvr.vrsettings is empty");
-
-	auto &root = v.get<picojson::object>();
-
-	if (!root["steamvr"].is<picojson::object>())
-		throw std::runtime_error("steamvr.vrsettings is missing \"steamvr\" key");
-
-	auto &steamvr = root["steamvr"].get<picojson::object>();
-
-	const bool tru = true; // MSVC picks the wrong specialization when passing a literal...
-	steamvr["activateMultipleDrivers"].set<bool>(tru);
-
-	std::ofstream ofile(configPath);
-	if (!ofile.good())
-		throw std::runtime_error("failed to write steamvr.vrsettings");
-
-	v.serialize(std::ostream_iterator<char>(ofile), true);
-
-	std::cout << "Successfully set activateMultipleDrivers to true" << std::endl;
 }
