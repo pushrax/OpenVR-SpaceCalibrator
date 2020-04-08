@@ -9,19 +9,7 @@
 #include <iomanip>
 #include <limits>
 
-static void UpgradeProfileV1(CalibrationContext &ctx);
-static void ParseProfileV2(CalibrationContext &ctx, std::istream &stream);
-
-static std::string ConfigFileName()
-{
-	char cruntimePath[MAX_PATH] = { 0 };
-	unsigned int pathLen;
-	vr::VR_GetRuntimePath(cruntimePath, MAX_PATH, &pathLen);
-	std::string vrRuntimeConfigName(cruntimePath);
-	return vrRuntimeConfigName + "\\..\\..\\..\\config\\01spacecalibrator\\calibration.json";
-}
-
-picojson::array FloatArray(const float *buf, int numFloats)
+static picojson::array FloatArray(const float *buf, int numFloats)
 {
 	picojson::array arr;
 
@@ -31,7 +19,7 @@ picojson::array FloatArray(const float *buf, int numFloats)
 	return arr;
 }
 
-void LoadFloatArray(const picojson::value &obj, float *buf, int numFloats)
+static void LoadFloatArray(const picojson::value &obj, float *buf, int numFloats)
 {
 	if (!obj.is<picojson::array>())
 		throw std::runtime_error("expected array, got " + obj.to_str());
@@ -44,38 +32,7 @@ void LoadFloatArray(const picojson::value &obj, float *buf, int numFloats)
 		buf[i] = (float) arr[i].get<double>();
 }
 
-void LoadProfile(CalibrationContext &ctx)
-{
-	ctx.validProfile = false;
-
-	std::ifstream file(ConfigFileName());
-	if (!file.good())
-	{
-		std::cout << "Profile missing, trying fallback path" << std::endl;
-		// Fallback to working directory, which was the default for a long time.
-		file = std::ifstream("openvr_space_calibration.json");
-	}
-
-
-	if (!file.good())
-	{
-		std::cout << "Fallback profile missing, trying V1 path" << std::endl;
-		UpgradeProfileV1(ctx);
-		return;
-	}
-
-	try
-	{
-		ParseProfileV2(ctx, file);
-		std::cout << "Loaded profile" << std::endl;
-	}
-	catch (const std::runtime_error &e)
-	{
-		std::cerr << "Error loading profile: " << e.what() << std::endl;
-	}
-}
-
-static void ParseProfileV2(CalibrationContext &ctx, std::istream &stream)
+static void ParseProfile(CalibrationContext &ctx, std::istream &stream)
 {
 	picojson::value v;
 	std::string err = picojson::parse(v, stream);
@@ -130,17 +87,10 @@ static void ParseProfileV2(CalibrationContext &ctx, std::istream &stream)
 	ctx.validProfile = true;
 }
 
-void SaveProfile(CalibrationContext &ctx)
+static void WriteProfile(CalibrationContext &ctx, std::ostream &out)
 {
-	std::cout << "Saving profile to " << ConfigFileName() << std::endl;
-
-	std::ofstream file(ConfigFileName());
-
 	if (!ctx.validProfile)
-	{
-		file << "[]";
 		return;
-	}
 
 	picojson::object profile;
 	profile["reference_tracking_system"].set<std::string>(ctx.referenceTrackingSystem);
@@ -183,30 +133,89 @@ void SaveProfile(CalibrationContext &ctx)
 	picojson::value profilesV;
 	profilesV.set<picojson::array>(profiles);
 
-	file << profilesV.serialize(true);
+	out << profilesV.serialize(true);
 }
 
-static void UpgradeProfileV1(CalibrationContext &ctx)
+static void LogRegistryResult(LSTATUS result)
 {
-	std::ifstream file("openvr_space_calibration.txt");
+	char *message;
+	FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_ALLOCATE_BUFFER, 0, result, LANG_USER_DEFAULT, (LPSTR)&message, 0, NULL);
+	std::cerr << "Opening registry key: " << message << std::endl;
+}
+
+static const char *RegistryKey = "Software\\OpenVR-SpaceCalibrator";
+
+static std::string ReadRegistryKey()
+{
+	DWORD size = 0;
+	auto result = RegGetValueA(HKEY_CURRENT_USER_LOCAL_SETTINGS, RegistryKey, "Config", RRF_RT_REG_SZ, 0, 0, &size);
+	if (result != ERROR_SUCCESS)
+	{
+		LogRegistryResult(result);
+		return "";
+	}
+
+	std::string str;
+	str.resize(size);
+
+	result = RegGetValueA(HKEY_CURRENT_USER_LOCAL_SETTINGS, RegistryKey, "Config", RRF_RT_REG_SZ, 0, &str[0], &size);
+	if (result != ERROR_SUCCESS)
+	{
+		LogRegistryResult(result);
+		return "";
+	}
+	
+	str.resize(size - 1);
+	return str;
+}
+
+static void WriteRegistryKey(std::string str)
+{
+	HKEY hkey;
+	auto result = RegCreateKeyExA(HKEY_CURRENT_USER_LOCAL_SETTINGS, RegistryKey, 0, REG_NONE, 0, KEY_ALL_ACCESS, 0, &hkey, 0);
+	if (result != ERROR_SUCCESS)
+	{
+		LogRegistryResult(result);
+		return;
+	}
+
+	DWORD size = str.size() + 1;
+
+	result = RegSetValueExA(hkey, "Config", 0, REG_SZ, reinterpret_cast<const BYTE*>(str.c_str()), size);
+	if (result != ERROR_SUCCESS)
+		LogRegistryResult(result);
+
+	RegCloseKey(hkey);
+}
+
+void LoadProfile(CalibrationContext &ctx)
+{
 	ctx.validProfile = false;
 
-	if (!file.good())
+	auto str = ReadRegistryKey();
+	if (str == "")
+	{
+		std::cout << "Profile is empty" << std::endl;
 		return;
+	}
 
-	file
-		>> ctx.targetTrackingSystem
-		>> ctx.calibratedRotation(1) // yaw
-		>> ctx.calibratedRotation(2) // pitch
-		>> ctx.calibratedRotation(0) // roll
-		>> ctx.calibratedTranslation(0) // x
-		>> ctx.calibratedTranslation(1) // y
-		>> ctx.calibratedTranslation(2); // z
+	try
+	{
+		std::stringstream io(str);
+		ParseProfile(ctx, io);
+		std::cout << "Loaded profile" << std::endl;
+	}
+	catch (const std::runtime_error &e)
+	{
+		std::cerr << "Error loading profile: " << e.what() << std::endl;
+	}
+}
 
-	ctx.validProfile = true;
+void SaveProfile(CalibrationContext &ctx)
+{
+	std::cout << "Saving profile to registry" << std::endl;
 
-	SaveProfile(ctx);
-
-	file.close();
-	std::remove("openvr_space_calibration.txt");
+	std::stringstream io;
+	WriteProfile(ctx, io);
+	WriteRegistryKey(io.str());
 }
