@@ -113,7 +113,7 @@ Eigen::Vector3d CalibrateRotation(const std::vector<Sample> &samples)
 	}
 	char buf[256];
 	snprintf(buf, sizeof buf, "Got %zd samples with %zd delta samples\n", samples.size(), deltas.size());
-	CalCtx.Message(buf);
+	CalCtx.Log(buf);
 
 	// Kabsch algorithm
 
@@ -155,7 +155,7 @@ Eigen::Vector3d CalibrateRotation(const std::vector<Sample> &samples)
 	Eigen::Vector3d euler = rot.eulerAngles(2, 1, 0) * 180.0 / EIGEN_PI;
 
 	snprintf(buf, sizeof buf, "Calibrated rotation: yaw=%.2f pitch=%.2f roll=%.2f\n", euler[1], euler[2], euler[0]);
-	CalCtx.Message(buf);
+	CalCtx.Log(buf);
 	return euler;
 }
 
@@ -198,7 +198,7 @@ Eigen::Vector3d CalibrateTranslation(const std::vector<Sample> &samples)
 
 	char buf[256];
 	snprintf(buf, sizeof buf, "Calibrated translation x=%.2f y=%.2f z=%.2f\n", transcm[0], transcm[1], transcm[2]);
-	CalCtx.Message(buf);
+	CalCtx.Log(buf);
 	return transcm;
 }
 
@@ -214,15 +214,15 @@ Sample CollectSample(const CalibrationContext &ctx)
 	bool ok = true;
 	if (!reference.bPoseIsValid)
 	{
-		CalCtx.Message("Reference device is not tracking\n"); ok = false;
+		CalCtx.Log("Reference device is not tracking\n"); ok = false;
 	}
 	if (!target.bPoseIsValid)
 	{
-		CalCtx.Message("Target device is not tracking\n"); ok = false;
+		CalCtx.Log("Target device is not tracking\n"); ok = false;
 	}
 	if (!ok)
 	{
-		CalCtx.Message("Aborting calibration!\n");
+		CalCtx.Log("Aborting calibration!\n");
 		CalCtx.state = CalibrationState::None;
 		return Sample();
 	}
@@ -361,7 +361,7 @@ void StartCalibration()
 {
 	CalCtx.state = CalibrationState::Begin;
 	CalCtx.wantedUpdateInterval = 0.0;
-	CalCtx.messages = "";
+	CalCtx.messages.clear();
 }
 
 void CalibrationTick(double time)
@@ -406,26 +406,26 @@ void CalibrationTick(double time)
 
 		if (ctx.referenceID == -1)
 		{
-			CalCtx.Message("Missing reference device\n"); ok = false;
+			CalCtx.Log("Missing reference device\n"); ok = false;
 		}
 		else if (!ctx.devicePoses[ctx.referenceID].bPoseIsValid)
 		{
-			CalCtx.Message("Reference device is not tracking\n"); ok = false;
+			CalCtx.Log("Reference device is not tracking\n"); ok = false;
 		}
 
 		if (ctx.targetID == -1)
 		{
-			CalCtx.Message("Missing target device\n"); ok = false;
+			CalCtx.Log("Missing target device\n"); ok = false;
 		}
 		else if (!ctx.devicePoses[ctx.targetID].bPoseIsValid)
 		{
-			CalCtx.Message("Target device is not tracking\n"); ok = false;
+			CalCtx.Log("Target device is not tracking\n"); ok = false;
 		}
 
 		if (!ok)
 		{
 			ctx.state = CalibrationState::None;
-			CalCtx.Message("Aborting calibration!\n");
+			CalCtx.Log("Aborting calibration!\n");
 			return;
 		}
 
@@ -435,7 +435,7 @@ void CalibrationTick(double time)
 
 		char buf[256];
 		snprintf(buf, sizeof buf, "Starting calibration, referenceID=%d targetID=%d\n", ctx.referenceID, ctx.targetID);
-		CalCtx.Message(buf);
+		CalCtx.Log(buf);
 		return;
 	}
 
@@ -444,15 +444,15 @@ void CalibrationTick(double time)
 	{
 		return;
 	}
-	CalCtx.Message(".");
 
-	const int totalSamples = 100;
 	static std::vector<Sample> samples;
 	samples.push_back(sample);
 
-	if (samples.size() == totalSamples)
+	CalCtx.Progress(samples.size(), CalCtx.SampleCount());
+
+	if (samples.size() == CalCtx.SampleCount())
 	{
-		CalCtx.Message("\n");
+		CalCtx.Log("\n");
 		if (ctx.state == CalibrationState::Rotation)
 		{
 			ctx.calibratedRotation = CalibrateRotation(samples);
@@ -477,7 +477,7 @@ void CalibrationTick(double time)
 
 			ctx.validProfile = true;
 			SaveProfile(ctx);
-			CalCtx.Message("Finished calibration, profile saved\n");
+			CalCtx.Log("Finished calibration, profile saved\n");
 
 			ctx.state = CalibrationState::None;
 		}

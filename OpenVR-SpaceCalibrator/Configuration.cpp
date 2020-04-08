@@ -97,6 +97,9 @@ static void ParseProfileV2(CalibrationContext &ctx, std::istream &stream)
 	ctx.calibratedTranslation(1) = obj["y"].get<double>();
 	ctx.calibratedTranslation(2) = obj["z"].get<double>();
 
+	if (obj["calibration_speed"].is<double>())
+		ctx.calibrationSpeed = (CalibrationContext::Speed)(int) obj["calibration_speed"].get<double>();
+
 	if (obj["chaperone"].is<picojson::object>())
 	{
 		auto chaperone = obj["chaperone"].get<picojson::object>();
@@ -148,6 +151,9 @@ void SaveProfile(CalibrationContext &ctx)
 	profile["x"].set<double>(ctx.calibratedTranslation(0));
 	profile["y"].set<double>(ctx.calibratedTranslation(1));
 	profile["z"].set<double>(ctx.calibratedTranslation(2));
+
+	double speed = (int) ctx.calibrationSpeed;
+	profile["calibration_speed"].set<double>(speed);
 
 	if (ctx.chaperone.valid)
 	{

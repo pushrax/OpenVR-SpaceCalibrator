@@ -9,7 +9,7 @@
 #include <algorithm>
 #include <imgui/imgui.h>
 
-#define VERSION_STRING "0.9.0"
+#define VERSION_STRING "0.9.2"
 
 struct VRDevice
 {
@@ -33,31 +33,41 @@ VRState LoadVRState();
 void BuildSystemSelection(const VRState &state);
 void BuildDeviceSelections(const VRState &state);
 void BuildProfileEditor();
+void BuildMenu(bool runningInOverlay);
+
+static const ImGuiWindowFlags bareWindowFlags =
+	ImGuiWindowFlags_NoTitleBar |
+	ImGuiWindowFlags_NoResize |
+	ImGuiWindowFlags_NoMove;
 
 void BuildMainWindow(bool runningInOverlay)
 {
-	ImGuiWindowFlags windowFlags =
-		ImGuiWindowFlags_NoTitleBar |
-		ImGuiWindowFlags_NoResize |
-		ImGuiWindowFlags_NoMove;
-
 	auto &io = ImGui::GetIO();
 
 	ImGui::SetNextWindowPos(ImVec2(0.0f, 0.0f), ImGuiSetCond_Always);
 	ImGui::SetNextWindowSize(io.DisplaySize, ImGuiSetCond_Always);
 
-	if (!ImGui::Begin("MainWindow", nullptr, windowFlags))
+	if (!ImGui::Begin("MainWindow", nullptr, bareWindowFlags))
 	{
-        ImGui::End();
+		ImGui::End();
 		return;
 	}
 
-	ImGuiStyle &style = ImGui::GetStyle();
+	ImGui::PushStyleColor(ImGuiCol_PlotHistogram, ImGui::GetStyleColorVec4(ImGuiCol_Button));
 
 	auto state = LoadVRState();
 	BuildSystemSelection(state);
 	BuildDeviceSelections(state);
+	BuildMenu(runningInOverlay);
 
+	ImGui::PopStyleColor();
+	ImGui::End();
+}
+
+void BuildMenu(bool runningInOverlay)
+{
+	auto &io = ImGui::GetIO();
+	ImGuiStyle &style = ImGui::GetStyle();
 	ImGui::Text("");
 
 	if (CalCtx.state == CalibrationState::None)
@@ -125,6 +135,26 @@ void BuildMainWindow(bool runningInOverlay)
 				SaveProfile(CalCtx);
 			}
 		}
+
+		ImGui::Text("");
+		auto speed = CalCtx.calibrationSpeed;
+
+		ImGui::Columns(4, NULL, false);
+		ImGui::Text("Calibration Speed");
+
+		ImGui::NextColumn();
+		if (ImGui::RadioButton(" Fast          ", speed == CalibrationContext::FAST))
+			CalCtx.calibrationSpeed = CalibrationContext::FAST;
+
+		ImGui::NextColumn();
+		if (ImGui::RadioButton(" Slow          ", speed == CalibrationContext::SLOW))
+			CalCtx.calibrationSpeed = CalibrationContext::SLOW;
+
+		ImGui::NextColumn();
+		if (ImGui::RadioButton(" Very Slow     ", speed == CalibrationContext::VERY_SLOW))
+			CalCtx.calibrationSpeed = CalibrationContext::VERY_SLOW;
+
+		ImGui::Columns(1);
 	}
 	else if (CalCtx.state == CalibrationState::Editing)
 	{
@@ -141,22 +171,6 @@ void BuildMainWindow(bool runningInOverlay)
 		ImGui::Button("Calibration in progress...", ImVec2(ImGui::GetWindowContentRegionWidth(), ImGui::GetTextLineHeight() * 2));
 	}
 
-	ImGui::SetNextWindowPos(ImVec2(20.0f, 20.0f), ImGuiSetCond_Always);
-	ImGui::SetNextWindowSize(ImVec2(io.DisplaySize.x - 40.0f, io.DisplaySize.y - 40.0f), ImGuiSetCond_Always);
-	if (ImGui::BeginPopupModal("Calibration Progress", nullptr, windowFlags))
-	{
-		ImGui::TextWrapped(CalCtx.messages.c_str());
-
-		if (CalCtx.state == CalibrationState::None)
-		{
-			ImGui::Text("");
-			if (ImGui::Button("Close", ImVec2(ImGui::GetWindowContentRegionWidth(), ImGui::GetTextLineHeight() * 2)))
-				ImGui::CloseCurrentPopup();
-		}
-
-		ImGui::EndPopup();
-	}
-
 	ImGui::SetNextWindowPos(ImVec2(10.0f, ImGui::GetWindowHeight() - ImGui::GetItemsLineHeightWithSpacing()));
 	ImGui::BeginChild("bottom line", ImVec2(ImGui::GetWindowWidth() - 20.0f, ImGui::GetItemsLineHeightWithSpacing() * 2), false);
 	ImGui::Text("OpenVR Space Calibrator v" VERSION_STRING " - by tach/pushrax");
@@ -167,7 +181,38 @@ void BuildMainWindow(bool runningInOverlay)
 	}
 	ImGui::EndChild();
 
-	ImGui::End();
+	ImGui::SetNextWindowPos(ImVec2(20.0f, 20.0f), ImGuiSetCond_Always);
+	ImGui::SetNextWindowSize(ImVec2(io.DisplaySize.x - 40.0f, io.DisplaySize.y - 40.0f), ImGuiSetCond_Always);
+	if (ImGui::BeginPopupModal("Calibration Progress", nullptr, bareWindowFlags))
+	{
+		ImGui::PushStyleColor(ImGuiCol_FrameBg, (ImVec4)ImColor(0, 0, 0));
+		for (auto &message : CalCtx.messages)
+		{
+			switch (message.type)
+			{
+			case CalibrationContext::Message::String:
+				ImGui::TextWrapped(message.str.c_str());
+				break;
+			case CalibrationContext::Message::Progress:
+				float fraction = (float)message.progress / (float)message.target;
+				ImGui::Text("");
+				ImGui::ProgressBar(fraction, ImVec2(-1.0f, 0.0f), "");
+				ImGui::SetCursorPosY(ImGui::GetCursorPosY() - ImGui::GetFontSize() - style.FramePadding.y * 2);
+				ImGui::Text(" %d%%", (int)(fraction * 100));
+				break;
+			}
+		}
+		ImGui::PopStyleColor();
+
+		if (CalCtx.state == CalibrationState::None)
+		{
+			ImGui::Text("");
+			if (ImGui::Button("Close", ImVec2(ImGui::GetWindowContentRegionWidth(), ImGui::GetTextLineHeight() * 2)))
+				ImGui::CloseCurrentPopup();
+		}
+
+		ImGui::EndPopup();
+	}
 }
 
 void BuildSystemSelection(const VRState &state)
@@ -233,13 +278,14 @@ void BuildSystemSelection(const VRState &state)
 	}
 
 	ImGui::SameLine();
-	ImGui::PushItemWidth(paneWidth);
 	ImGui::Combo("##TargetTrackingSystem", &currentTargetSystem, &targetSystems[0], (int) targetSystems.size());
 
 	if (currentTargetSystem != -1 && currentTargetSystem < targetSystems.size())
 	{
 		CalCtx.targetTrackingSystem = std::string(targetSystems[currentTargetSystem]);
 	}
+
+	ImGui::PopItemWidth();
 }
 
 void AppendSeparated(std::string &buffer, const std::string &suffix)
@@ -428,10 +474,8 @@ void BuildProfileEditor()
 	ImGui::PushItemWidth(widthF);
 	ImGui::InputDouble("##Yaw", &CalCtx.calibratedRotation(1), 0.1, 1.0, "%.8f");
 	ImGui::SameLine();
-	ImGui::PushItemWidth(widthF);
 	ImGui::InputDouble("##Pitch", &CalCtx.calibratedRotation(2), 0.1, 1.0, "%.8f");
 	ImGui::SameLine();
-	ImGui::PushItemWidth(widthF);
 	ImGui::InputDouble("##Roll", &CalCtx.calibratedRotation(0), 0.1, 1.0, "%.8f");
 
 	TextWithWidth("XLabel", "X", width);
@@ -440,14 +484,12 @@ void BuildProfileEditor()
 	ImGui::SameLine();
 	TextWithWidth("ZLabel", "Z", width);
 
-	ImGui::PushItemWidth(widthF);
 	ImGui::InputDouble("##X", &CalCtx.calibratedTranslation(0), 1.0, 10.0, "%.8f");
 	ImGui::SameLine();
-	ImGui::PushItemWidth(widthF);
 	ImGui::InputDouble("##Y", &CalCtx.calibratedTranslation(1), 1.0, 10.0, "%.8f");
 	ImGui::SameLine();
-	ImGui::PushItemWidth(widthF);
 	ImGui::InputDouble("##Z", &CalCtx.calibratedTranslation(2), 1.0, 10.0, "%.8f");
+	ImGui::PopItemWidth();
 }
 
 void TextWithWidth(const char *label, const char *text, float width)
