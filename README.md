@@ -1,8 +1,14 @@
 # OpenVR Space Calibrator
 
-Use tracked VR devices from one company with any other.
+This helps you use tracked VR devices from one company with any other. It aligns multiple tracking systems with a quick calibration step. It may not work for your setup, but there are many cases that work to a degree, and some work very well.
 
-This is **experimental software** and may not work for your setup. It's well-tested for the Rift with Vive trackers though, with a community of a few hundred users ([Discord][]). It also seems to work for various HMDs (Windows MR, Rift) with Vive controllers and Knuckles prototypes. A quick video of how this works using an old version (~v0.3) is available at https://www.youtube.com/watch?v=W3TnQd9JMl4.
+- Rift CV1 x Vive devices: works very well with the v2 (blue logo) trackers, v1 trackers (grey logo, not in production) have major interference issues in the IR spectrum, controller wands (both gen) and Index controllers work very well.
+- Rift S, Quest, Windows MR, other SLAM inside-out tracked HMDs x Vive devices: works very well when you aren't moving around the room far (e.g. Beat Saber) but a lot of walking around causes a large amount of drift between systems. It's possible some of this can be fixed in software with a better calibration algorithm.
+- Any non-Rift HMD x Touch controllers: does not work, the Oculus driver requires the HMD is a Rift. It's theoretically possible to work around this in software but as far as I know it hasn't been done as it would require a fair amount of reverse engineering effort.
+
+There is a community of a few thousand users on [Discord][].
+
+A quick video of how this works using an old version (~v0.3) is available at https://www.youtube.com/watch?v=W3TnQd9JMl4. The user interface has been upgraded since then; the calibration is now done via a SteamVR dashboard menu, and there's much more configurability.
 
 [Discord]: https://discord.gg/m7g2Wyj
 
