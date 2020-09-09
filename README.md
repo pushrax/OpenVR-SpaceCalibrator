@@ -14,7 +14,7 @@ A quick video of how this works using an old version (~v0.3) is available at htt
 
 ### Install
 
-Before following the directions below, download and run the installer for the [latest release](https://github.com/pushrax/OpenVR-SpaceCalibrator/releases). This will automatically set up SteamVR for use with multiple tracking systems (`activateMultipleDrivers: true`).
+Before following the directions below, download and run the installer for the [latest release](https://github.com/pushrax/OpenVR-SpaceCalibrator/releases). This will automatically set up SteamVR for use with multiple tracking systems (`activateMultipleDrivers: true`). There are many guides that say you need to edit the SteamVR config manually. You do not.
 
 ### Usage
 
