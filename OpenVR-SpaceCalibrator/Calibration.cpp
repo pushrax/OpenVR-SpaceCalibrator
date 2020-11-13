@@ -416,11 +416,11 @@ void CalibrationTick(double time)
 		}
 		Eigen::Vector3d deltaTrans = pose.trans - ReferencePose.trans;
 		Eigen::Matrix3d deltaRot = pose.rot - ReferencePose.rot;
-		ctx.calibratedTranslation = ReferenceTranslation + deltaTrans;
-		ctx.calibratedRotation = ReferenceRotation + AxisFromRotationMatrix3(deltaRot);
-		ctx.wantedUpdateInterval = 0.1;
+		ctx.calibratedTranslation = ReferencePose.trans + deltaTrans;
+		ctx.calibratedRotation = AxisFromRotationMatrix3(ReferencePose.rot + deltaRot);
+		ctx.wantedUpdateInterval = 0.05;
 
-		if ((time - ctx.timeLastScan) >= 0.1)
+		if ((time - ctx.timeLastScan) >= 0.05)
 		{
 			ScanAndApplyProfile(ctx);
 			ctx.timeLastScan = time;
