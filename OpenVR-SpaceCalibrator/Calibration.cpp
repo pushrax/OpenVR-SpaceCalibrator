@@ -405,13 +405,12 @@ void CalibrationTick(double time)
 
 	if (ctx.state == CalibrationState::Referencing)
 	{
-		Pose pose = Pose(ctx.devicePoses[ctx.targetID].mDeviceToAbsoluteTracking);
+		Pose pose(ctx.devicePoses[ctx.targetID].mDeviceToAbsoluteTracking);
 		if (ctx.state != LastState) {
 			ReferencePose = pose;
 		}
 		Eigen::Vector3d deltaTrans = pose.trans - ReferencePose.trans;
 		Eigen::Matrix3d deltaRot = pose.rot - ReferencePose.rot;
-		protocol::Request req(protocol::RequestSetDeviceTransform);
 		ctx.calibratedTranslation = ReferencePose.trans + deltaTrans;
 		ctx.calibratedRotation =  (ReferencePose.rot + deltaRot).eulerAngles(2, 1, 0) * 180.0 / EIGEN_PI;
 		ctx.wantedUpdateInterval = 0.1;
