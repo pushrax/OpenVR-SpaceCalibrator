@@ -13,6 +13,8 @@
 static IPCClient Driver;
 CalibrationContext CalCtx;
 CalibrationState LastState = CalibrationState::None;
+Eigen::Vector3d ReferenceTranslation;
+Eigen::Vector3d ReferenceRotation;
 
 void InitCalibrator()
 {
@@ -406,14 +408,16 @@ void CalibrationTick(double time)
 
 	if (ctx.state == CalibrationState::Referencing)
 	{
-		Pose pose(ctx.devicePoses[ctx.targetID].mDeviceToAbsoluteTracking);
+		Pose pose(ctx.devicePoses[ctx.referenceID].mDeviceToAbsoluteTracking);
 		if (ctx.state != LastState) {
 			ReferencePose = pose;
+			ReferenceTranslation = ctx.calibratedTranslation;
+			ReferenceRotation = ctx.calibratedRotation;
 		}
 		Eigen::Vector3d deltaTrans = pose.trans - ReferencePose.trans;
 		Eigen::Matrix3d deltaRot = pose.rot - ReferencePose.rot;
-		ctx.calibratedTranslation = ReferencePose.trans + deltaTrans;
-		ctx.calibratedRotation =  (ReferencePose.rot + deltaRot).eulerAngles(2, 1, 0) * 180.0 / EIGEN_PI;
+		ctx.calibratedTranslation = ReferenceTranslation + deltaTrans;
+		ctx.calibratedRotation = ReferenceRotation + AxisFromRotationMatrix3(deltaRot);
 		ctx.wantedUpdateInterval = 0.1;
 
 		if ((time - ctx.timeLastScan) >= 0.1)

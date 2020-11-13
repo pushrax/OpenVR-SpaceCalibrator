@@ -156,7 +156,7 @@ void BuildMenu(bool runningInOverlay)
 
 		ImGui::Columns(1);
 	}
-	else if (CalCtx.state == CalibrationState::Editing)
+	else if (CalCtx.state == CalibrationState::Editing || CalCtx.state == CalibrationState::Referencing)
 	{
 		BuildProfileEditor();
 
