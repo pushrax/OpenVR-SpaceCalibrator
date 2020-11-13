@@ -12,7 +12,6 @@
 
 static IPCClient Driver;
 CalibrationContext CalCtx;
-Pose ReferencePose;
 CalibrationState LastState = CalibrationState::None;
 
 void InitCalibrator()
@@ -37,6 +36,8 @@ struct Pose
 	}
 	Pose(double x, double y, double z) : trans(Eigen::Vector3d(x,y,z)) { }
 };
+
+Pose ReferencePose;
 
 struct Sample
 {
