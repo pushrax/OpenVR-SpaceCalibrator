@@ -11,6 +11,7 @@ enum class CalibrationState
 	Rotation,
 	Translation,
 	Editing,
+	Referencing
 };
 
 struct CalibrationContext
@@ -26,6 +27,7 @@ struct CalibrationContext
 
 	bool enabled = false;
 	bool validProfile = false;
+	bool isReferenceTracking = false;
 	double timeLastTick = 0, timeLastScan = 0;
 	double wantedUpdateInterval = 1.0;
 

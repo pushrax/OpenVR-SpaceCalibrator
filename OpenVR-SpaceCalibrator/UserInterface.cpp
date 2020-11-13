@@ -165,6 +165,17 @@ void BuildMenu(bool runningInOverlay)
 			SaveProfile(CalCtx);
 			CalCtx.state = CalibrationState::None;
 		}
+
+		if (CalCtx.state != CalibrationState::Referencing && ImGui::Button("Reference Offset", ImVec2(ImGui::GetWindowContentRegionWidth(), ImGui::GetTextLineHeight() * 2)))
+		{
+			CalCtx.state = CalibrationState::Referencing;
+		}
+
+		if (CalCtx.state == CalibrationState::Referencing && ImGui::Button("Stop Reference Offset", ImVec2(ImGui::GetWindowContentRegionWidth(), ImGui::GetTextLineHeight() * 2)))
+		{
+			SaveProfile(CalCtx);
+			CalCtx.state = CalibrationState::None;
+		}
 	}
 	else
 	{

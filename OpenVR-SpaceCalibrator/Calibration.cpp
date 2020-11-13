@@ -12,6 +12,8 @@
 
 static IPCClient Driver;
 CalibrationContext CalCtx;
+Pose ReferencePose;
+CalibrationState LastState = CalibrationState::None;
 
 void InitCalibrator()
 {
@@ -399,6 +401,30 @@ void CalibrationTick(double time)
 		}
 		return;
 	}
+
+
+	if (ctx.state == CalibrationState::Referencing)
+	{
+		Pose pose = Pose(ctx.devicePoses[ctx.targetID].mDeviceToAbsoluteTracking);
+		if (ctx.state != LastState) {
+			ReferencePose = pose;
+		}
+		Eigen::Vector3d deltaTrans = pose.trans - ReferencePose.trans;
+		Eigen::Matrix3d deltaRot = pose.rot - ReferencePose.rot;
+		protocol::Request req(protocol::RequestSetDeviceTransform);
+		ctx.calibratedTranslation = ReferencePose.trans + deltaTrans;
+		ctx.calibratedRotation =  (ReferencePose.rot + deltaRot).eulerAngles(2, 1, 0) * 180.0 / EIGEN_PI;
+		ctx.wantedUpdateInterval = 0.1;
+
+		if ((time - ctx.timeLastScan) >= 0.1)
+		{
+			ScanAndApplyProfile(ctx);
+			ctx.timeLastScan = time;
+		}
+		return;
+
+	}
+	LastState = ctx.state;
 
 	if (ctx.state == CalibrationState::Begin)
 	{
