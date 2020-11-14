@@ -15,7 +15,6 @@ CalibrationContext CalCtx;
 CalibrationState LastState = CalibrationState::None;
 Eigen::Vector3d ReferenceTranslation;
 Eigen::Vector3d ReferenceRotation;
-char ReferenceBuf[256];
 
 void InitCalibrator()
 {
