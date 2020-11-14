@@ -29,6 +29,7 @@ struct CalibrationContext
 	bool validProfile = false;
 	double timeLastTick = 0, timeLastScan = 0;
 	double wantedUpdateInterval = 1.0;
+	char ButtonBuf[1024];
 
 	enum Speed
 	{
@@ -100,7 +101,7 @@ struct CalibrationContext
 			messages.push_back(Message(Message::String));
 
 		messages.back().str += msg;
-		// std::cerr << msg;
+		std::cerr << msg;
 	}
 
 	void Progress(int current, int target)
