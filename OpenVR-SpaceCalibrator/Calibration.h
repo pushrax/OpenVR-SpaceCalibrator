@@ -100,7 +100,7 @@ struct CalibrationContext
 			messages.push_back(Message(Message::String));
 
 		messages.back().str += msg;
-		std::cerr << msg;
+		// std::cerr << msg;
 	}
 
 	void Progress(int current, int target)
@@ -120,3 +120,5 @@ void CalibrationTick(double time);
 void StartCalibration();
 void LoadChaperoneBounds();
 void ApplyChaperoneBounds();
+void SetReferenceOffset();
+char* GetReferenceTrans();

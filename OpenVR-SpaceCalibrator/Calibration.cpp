@@ -15,6 +15,7 @@ CalibrationContext CalCtx;
 CalibrationState LastState = CalibrationState::None;
 Eigen::Vector3d ReferenceTranslation;
 Eigen::Vector3d ReferenceRotation;
+char ReferenceBuf[256];
 
 void InitCalibrator()
 {
@@ -369,6 +370,19 @@ void StartCalibration()
 	CalCtx.messages.clear();
 }
 
+char* GetReferenceTrans() {
+	snprintf(ReferenceBuf, sizeof ReferenceBuf, "Refference offset point: %.8f %.8f %.8f\n", ReferenceTranslation(0), ReferenceTranslation(1), ReferenceTranslation(2));
+	return ReferenceBuf;
+}
+
+void SetReferenceOffset() {
+	auto &ctx = CalCtx;
+	Pose pose(ctx.devicePoses[ctx.referenceID].mDeviceToAbsoluteTracking);
+	ReferencePose = pose;
+	ReferenceTranslation = ctx.calibratedTranslation;
+	ReferenceRotation = ctx.calibratedRotation;
+}
+
 void CalibrationTick(double time)
 {
 	if (!vr::VRSystem())
@@ -409,24 +423,25 @@ void CalibrationTick(double time)
 	if (ctx.state == CalibrationState::Referencing)
 	{
 		Pose pose(ctx.devicePoses[ctx.referenceID].mDeviceToAbsoluteTracking);
-		if (ctx.state != LastState) {
-			ReferencePose = pose;
-			ReferenceTranslation = ctx.calibratedTranslation;
-			ReferenceRotation = ctx.calibratedRotation;
-		}
 		Eigen::Vector3d deltaTrans = pose.trans - ReferencePose.trans;
-		Eigen::Matrix3d deltaRot = pose.rot - ReferencePose.rot;
-		ctx.calibratedTranslation = ReferencePose.trans + deltaTrans;
-		ctx.calibratedRotation = AxisFromRotationMatrix3(ReferencePose.rot + deltaRot);
-		ctx.wantedUpdateInterval = 0.05;
+		//Eigen::Matrix3d deltaRot = pose.rot - ReferencePose.rot;
+		ctx.calibratedTranslation = ReferenceTranslation + (deltaTrans * 100);
+		//auto rotation = pose.rot.eulerAngles(2, 1, 0) * 180.0 / EIGEN_PI;
+		/*ctx.calibratedRotation[0] = ReferenceRotation(0) + rotation(0);
+		ctx.calibratedRotation[1] = ReferenceRotation(1) + rotation(1);
+		ctx.calibratedRotation[2] = ReferenceRotation(2) + rotation(2);*/
+		//ctx.calibratedRotation[0] = rotation(0);
+		//ctx.calibratedRotation[1] = rotation(1);
+		//ctx.calibratedRotation[2] = rotation(2);
 
-		if ((time - ctx.timeLastScan) >= 0.05)
+		ctx.wantedUpdateInterval = 0.025;
+
+		if ((time - ctx.timeLastScan) >= 0.025)
 		{
 			ScanAndApplyProfile(ctx);
 			ctx.timeLastScan = time;
 		}
 		return;
-
 	}
 	LastState = ctx.state;
 
