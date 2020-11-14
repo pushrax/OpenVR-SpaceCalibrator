@@ -177,10 +177,6 @@ void BuildMenu(bool runningInOverlay)
 			SetReferenceOffset();
 			CalCtx.state = CalibrationState::Referencing;
 		}
-		if (CalCtx.state == CalibrationState::Referencing) {
-			ImGui::TextWrapped(GetReferenceTrans());
-			ImGui::TextWrapped(CalCtx.ButtonBuf);
-		}
 	}
 	else
 	{

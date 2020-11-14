@@ -370,11 +370,6 @@ void StartCalibration()
 	CalCtx.messages.clear();
 }
 
-char* GetReferenceTrans() {
-	snprintf(ReferenceBuf, sizeof ReferenceBuf, "Refference offset point: %.8f %.8f %.8f\n", ReferenceTranslation(0), ReferenceTranslation(1), ReferenceTranslation(2));
-	return ReferenceBuf;
-}
-
 void SetReferenceOffset() {
 	auto &ctx = CalCtx;
 	Pose pose(ctx.devicePoses[ctx.referenceID].mDeviceToAbsoluteTracking);

@@ -237,26 +237,27 @@ void RunLoop()
 
 			vr::VREvent_t event;
 			while (vr::VRSystem()->PollNextEvent(&event, sizeof(event))) {
-				vr::VRControllerState_t state;
-				vr::VRSystem()->GetControllerState(CalCtx.referenceID, &state, sizeof(state));
-				bool pushed = (state.ulButtonPressed & vr::ButtonMaskFromId(vr::EVRButtonId::k_EButton_Grip)) != 0;
-				//snprintf(CalCtx.ButtonBuf, sizeof CalCtx.ButtonBuf, "VREvent_ButtonPress: %d\n", (state.ulButtonPressed & vr::ButtonMaskFromId(vr::EVRButtonId::k_EButton_A)));
+				if (event.eventType == vr::VREvent_ButtonPress || event.eventType == vr::VREvent_ButtonUnpress) {
+					vr::VRControllerState_t state;
+					vr::VRSystem()->GetControllerState(CalCtx.referenceID, &state, sizeof(state));
+					bool pushed = (state.ulButtonPressed & vr::ButtonMaskFromId(vr::EVRButtonId::k_EButton_Grip)) != 0;
+					//snprintf(CalCtx.ButtonBuf, sizeof CalCtx.ButtonBuf, "VREvent_ButtonPress: %d\n", (state.ulButtonPressed & vr::ButtonMaskFromId(vr::EVRButtonId::k_EButton_A)));
 
-				if (pushed) {
-					//snprintf(CalCtx.ButtonBuf, sizeof CalCtx.ButtonBuf, "pushed\n");
-					if (CalCtx.state == CalibrationState::Editing) {
-						SetReferenceOffset();
-						CalCtx.state = CalibrationState::Referencing;
+					if (pushed) {
+						//snprintf(CalCtx.ButtonBuf, sizeof CalCtx.ButtonBuf, "pushed\n");
+						if (CalCtx.state == CalibrationState::Editing) {
+							SetReferenceOffset();
+							CalCtx.state = CalibrationState::Referencing;
+						}
 					}
-				}else if(CalCtx.state == CalibrationState::Referencing){
-					SaveProfile(CalCtx);
-					CalCtx.state = CalibrationState::Editing;
+					else if (CalCtx.state == CalibrationState::Referencing) {
+						SaveProfile(CalCtx);
+						CalCtx.state = CalibrationState::Editing;
+					}
 				}
 			}
 
 			vr::VREvent_t vrEvent;
-			vr::VRControllerState_t state;
-			bool pushed = false;
 			while (vr::VROverlay()->PollNextOverlayEvent(overlayMainHandle, &vrEvent, sizeof(vrEvent)))
 			{
 				switch (vrEvent.eventType) {

@@ -29,7 +29,6 @@ struct CalibrationContext
 	bool validProfile = false;
 	double timeLastTick = 0, timeLastScan = 0;
 	double wantedUpdateInterval = 1.0;
-	char ButtonBuf[1024];
 
 	enum Speed
 	{
@@ -122,4 +121,3 @@ void StartCalibration();
 void LoadChaperoneBounds();
 void ApplyChaperoneBounds();
 void SetReferenceOffset();
-char* GetReferenceTrans();
