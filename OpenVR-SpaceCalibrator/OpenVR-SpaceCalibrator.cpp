@@ -241,10 +241,8 @@ void RunLoop()
 					vr::VRControllerState_t state;
 					vr::VRSystem()->GetControllerState(CalCtx.referenceID, &state, sizeof(state));
 					bool pushed = (state.ulButtonPressed & vr::ButtonMaskFromId(vr::EVRButtonId::k_EButton_Grip)) != 0;
-					//snprintf(CalCtx.ButtonBuf, sizeof CalCtx.ButtonBuf, "VREvent_ButtonPress: %d\n", (state.ulButtonPressed & vr::ButtonMaskFromId(vr::EVRButtonId::k_EButton_A)));
-
+					
 					if (pushed) {
-						//snprintf(CalCtx.ButtonBuf, sizeof CalCtx.ButtonBuf, "pushed\n");
 						if (CalCtx.state == CalibrationState::Editing) {
 							SetReferenceOffset();
 							CalCtx.state = CalibrationState::Referencing;
