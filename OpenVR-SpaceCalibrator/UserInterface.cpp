@@ -166,16 +166,14 @@ void BuildMenu(bool runningInOverlay)
 			CalCtx.state = CalibrationState::None;
 		}
 
-		if (CalCtx.state == CalibrationState::Referencing && ImGui::Button("Stop Reference Offset", ImVec2(ImGui::GetWindowContentRegionWidth(), ImGui::GetTextLineHeight() * 2)))
+		ImGui::Text("\n");
+		ImGui::Text("Close the steam menu to grab the target space and fine adjust with the reference grip button.\n");
+		ImGui::Text("When you let go it will save the profile.\n");
+		ImGui::Text("\n");
+
+		if (ImGui::Button("Back", ImVec2(ImGui::GetWindowContentRegionWidth(), ImGui::GetTextLineHeight() * 2)))
 		{
-			SaveProfile(CalCtx);
-			CalCtx.state = CalibrationState::Editing;
-		}
-		
-		if (CalCtx.state != CalibrationState::Referencing && ImGui::Button("Reference Offset", ImVec2(ImGui::GetWindowContentRegionWidth(), ImGui::GetTextLineHeight() * 2)))
-		{
-			SetReferenceOffset();
-			CalCtx.state = CalibrationState::Referencing;
+			CalCtx.state = CalibrationState::None;
 		}
 	}
 	else

@@ -413,13 +413,13 @@ void CalibrationTick(double time)
 		return;
 	}
 
-
 	if (ctx.state == CalibrationState::Referencing)
 	{
 		Pose pose(ctx.devicePoses[ctx.referenceID].mDeviceToAbsoluteTracking);
 		Eigen::Vector3d deltaTrans = pose.trans - ReferencePose.trans;
-		//Eigen::Matrix3d deltaRot = pose.rot - ReferencePose.rot;
-		ctx.calibratedTranslation = ReferenceTranslation + (deltaTrans * 100);
+		ctx.calibratedTranslation = (ReferenceTranslation + (deltaTrans * 100));
+
+		// Attempt # 1, getting teh euler delta and adding it to the original reference rotation - does not work.
 		//auto rotation = pose.rot.eulerAngles(2, 1, 0) * 180.0 / EIGEN_PI;
 		/*ctx.calibratedRotation[0] = ReferenceRotation(0) + rotation(0);
 		ctx.calibratedRotation[1] = ReferenceRotation(1) + rotation(1);
@@ -427,6 +427,23 @@ void CalibrationTick(double time)
 		//ctx.calibratedRotation[0] = rotation(0);
 		//ctx.calibratedRotation[1] = rotation(1);
 		//ctx.calibratedRotation[2] = rotation(2);
+
+
+		// Attempt #2, convert it all to quaternions ?? didnt get far with this one.
+		/*Eigen::Quaterniond currentQuat =
+			Eigen::AngleAxisd(ctx.calibratedRotation(0), Eigen::Vector3d::UnitZ()) *
+			Eigen::AngleAxisd(ctx.calibratedRotation(1), Eigen::Vector3d::UnitY()) *
+			Eigen::AngleAxisd(ctx.calibratedRotation(2), Eigen::Vector3d::UnitX());
+		Eigen::Matrix3d deltaRot = pose.rot - ReferencePose.rot;
+		Eigen::Quaternionf delta(deltaRot);
+		vr::HmdQuaternion_t deltaQuat;
+		deltaQuat.x = delta.coeffs()[0];
+		deltaQuat.y = delta.coeffs()[1];
+		deltaQuat.z = delta.coeffs()[2];
+		deltaQuat.w = delta.coeffs()[3];*/
+		//currentQuat.normalize();
+		// Eigen::Matrix3d updatedRot = currentQuat.toRotationMatrix() + deltaRot;
+
 
 		ctx.wantedUpdateInterval = 0.025;
 
