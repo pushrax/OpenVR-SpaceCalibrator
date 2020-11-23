@@ -7,7 +7,7 @@ This helps you use tracked VR devices from one company with any other. It aligns
 - Quest wireless streaming is particularly bad right now and requires frequent recalibration, but it does work for a short time until one of many factors causes it to drift. With wireless devices, moving slowly when calibrating and using the Slow or Very Slow calibration modes is effective at reducing the initial error.
 - Any non-Rift HMD x Touch controllers: does not work, the Oculus driver requires the HMD is a Rift. It's theoretically possible to work around this in software but as far as I know it hasn't been done as it would require a fair amount of reverse engineering effort.
 
-There is a community of a few thousand users on [Discord][].
+There is a community of a few thousand users on [Discord][] and a newer community on [Reddit](https://www.reddit.com/r/MixedVR/).
 
 A quick video of how this works using an old version (~v0.3) is available at https://www.youtube.com/watch?v=W3TnQd9JMl4. The user interface has been upgraded since then; the calibration is now done via a SteamVR dashboard menu, and there's much more configurability.
 
