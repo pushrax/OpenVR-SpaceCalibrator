@@ -235,6 +235,26 @@ void RunLoop()
 				keyboardOpen = true;
 			}
 
+			vr::VREvent_t event;
+			while (vr::VRSystem()->PollNextEvent(&event, sizeof(event))) {
+				if (event.eventType == vr::VREvent_ButtonPress || event.eventType == vr::VREvent_ButtonUnpress) {
+					vr::VRControllerState_t state;
+					vr::VRSystem()->GetControllerState(CalCtx.referenceID, &state, sizeof(state));
+					bool pushed = (state.ulButtonPressed & vr::ButtonMaskFromId(vr::EVRButtonId::k_EButton_Grip)) != 0;
+					
+					if (pushed) {
+						if (CalCtx.state == CalibrationState::Editing) {
+							SetReferenceOffset();
+							CalCtx.state = CalibrationState::Referencing;
+						}
+					}
+					else if (CalCtx.state == CalibrationState::Referencing) {
+						SaveProfile(CalCtx);
+						CalCtx.state = CalibrationState::Editing;
+					}
+				}
+			}
+
 			vr::VREvent_t vrEvent;
 			while (vr::VROverlay()->PollNextOverlayEvent(overlayMainHandle, &vrEvent, sizeof(vrEvent)))
 			{

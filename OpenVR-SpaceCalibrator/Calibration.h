@@ -11,6 +11,7 @@ enum class CalibrationState
 	Rotation,
 	Translation,
 	Editing,
+	Referencing
 };
 
 struct CalibrationContext
@@ -119,3 +120,4 @@ void CalibrationTick(double time);
 void StartCalibration();
 void LoadChaperoneBounds();
 void ApplyChaperoneBounds();
+void SetReferenceOffset();
