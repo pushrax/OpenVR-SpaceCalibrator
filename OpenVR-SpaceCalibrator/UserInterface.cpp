@@ -11,6 +11,9 @@
 
 #define VERSION_STRING "1.2"
 
+bool ENABLE_OFFSETS_2_DEVICE_HANDS = false;
+bool ENABLE_OFFSETS_4_DEVICE_HANDS = false;
+
 struct VRDevice
 {
 	int id = -1;
@@ -155,6 +158,101 @@ void BuildMenu(bool runningInOverlay)
 			CalCtx.calibrationSpeed = CalibrationContext::VERY_SLOW;
 
 		ImGui::Columns(1);
+
+		//
+		// UQ1: Offsets... TODO: These should really be saved, or have profiles for quick startup???
+		//
+		ImGui::Text("");
+		ImGui::Text("");
+		ImGui::Text("");
+		auto offsetMethod = CalCtx.offsetsEnabled;
+
+		ImGui::Text("Player Height Adjustment");
+		ImGui::Text("IMPORTANT: This system assumes you start devices in order:");
+		ImGui::Text(" 1. Hand controllers.");
+		ImGui::Text(" 2. Hip tracker.");
+		ImGui::Text(" 3. Feet trackers.");
+		ImGui::Text(" 4. Any other trackers (these will share the feet offsets - untested).");
+		ImGui::Text("");
+
+		ImGui::Text("Offsets");
+		ImGui::Text(" No Offsets - disables offsets");
+		ImGui::Text(" 2 Devices  - If your hardware uses 2 devices for hand controllers (Quest 2 using Virtual Desktop etc)");
+		ImGui::Text(" 4 Devices  - If your hardware uses 4 devices for hand controllers (Vive, etc)");
+		ImGui::Text("");
+		ImGui::Text("You can freely switch between these options to work out which is correct for your hardware without loosing setting changes below.");
+		ImGui::Text("");
+
+		ImGui::Columns(3, NULL, false);
+		/*
+		ImGui::Columns(4, NULL, false);
+		ImGui::Text("Offsets");
+
+		ImGui::NextColumn();
+		*/
+
+		if (ImGui::RadioButton(" No Offsets    ", offsetMethod == CalibrationContext::OFFSETS_NONE))
+			CalCtx.offsetsEnabled = CalibrationContext::OFFSETS_NONE;
+
+		ImGui::NextColumn();
+		if (ImGui::RadioButton(" 2 Devices     ", offsetMethod == CalibrationContext::OFFSETS_2_DEVICE_HANDS))
+			CalCtx.offsetsEnabled = CalibrationContext::OFFSETS_2_DEVICE_HANDS;
+
+		ImGui::NextColumn();
+		if (ImGui::RadioButton(" 4 Devices     ", offsetMethod == CalibrationContext::OFFSETS_4_DEVICE_HANDS))
+			CalCtx.offsetsEnabled = CalibrationContext::OFFSETS_4_DEVICE_HANDS;
+
+		ImGui::Text("");
+		ImGui::Columns(1);
+
+		ImGui::Text("");
+		auto offsetScale = CalCtx.customScale;
+
+		if (ImGui::DragFloat(" Scale         ", &offsetScale, 0.0001f, 0.001f, 2.000f, "%.3f", 1.0f))
+			CalCtx.customScale = offsetScale;
+
+		ImGui::Text("");
+		ImGui::Text("Fine Tune Custom Offsets");
+		ImGui::Text("These are strengths of offsets of each tracked body part type. Use these to customize as needed.");
+		auto handsOffsetScale = CalCtx.handsOffsetScale;
+		auto hipOffsetScale = CalCtx.hipOffsetScale;
+		auto feetOffsetScale = CalCtx.feetOffsetScale;
+
+		if (ImGui::DragFloat(" Hands ", &handsOffsetScale, 0.0001f, 0.001f, 2.000f, "%.3f", 1.0f))
+			CalCtx.handsOffsetScale = handsOffsetScale;
+
+		if (ImGui::DragFloat(" Hip   ", &hipOffsetScale, 0.0001f, 0.001f, 2.000f, "%.3f", 1.0f))
+			CalCtx.hipOffsetScale = hipOffsetScale;
+
+		if (ImGui::DragFloat(" Feet  ", &feetOffsetScale, 0.0001f, 0.001f, 2.000f, "%.3f", 1.0f))
+			CalCtx.feetOffsetScale = feetOffsetScale;
+
+		ImGui::Text("");
+
+		//
+		//
+		//
+		/*
+		ImGui::Text("");
+
+		char buffer[vr::k_unMaxPropertyStringSize];
+
+		for (uint32_t id = 0; id < vr::k_unMaxTrackedDeviceCount; ++id)
+		{
+			auto deviceClass = vr::VRSystem()->GetTrackedDeviceClass(id);
+			if (deviceClass == vr::TrackedDeviceClass_Invalid)
+				continue;
+
+			vr::ETrackedPropertyError err = vr::TrackedProp_Success;
+			vr::VRSystem()->GetStringTrackedDeviceProperty(id, vr::Prop_TrackingSystemName_String, buffer, vr::k_unMaxPropertyStringSize, &err);
+
+			if (err != vr::TrackedProp_Success)
+			{
+				continue;
+			}
+
+			ImGui::Text("Device %u - class %u\n", id, deviceClass);
+		}*/
 	}
 	else if (CalCtx.state == CalibrationState::Editing)
 	{

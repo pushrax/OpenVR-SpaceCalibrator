@@ -250,14 +250,79 @@ vr::HmdQuaternion_t VRRotationQuat(Eigen::Vector3d eulerdeg)
 	return vrRotQuat;
 }
 
-vr::HmdVector3d_t VRTranslationVec(Eigen::Vector3d transcm)
+vr::HmdVector3d_t VRTranslationVec(Eigen::Vector3d transcm, Eigen::Vector3d adjustTranslation)
 {
 	auto trans = transcm * 0.01;
 	vr::HmdVector3d_t vrTrans;
-	vrTrans.v[0] = trans[0];
-	vrTrans.v[1] = trans[1];
-	vrTrans.v[2] = trans[2];
+	vrTrans.v[0] = trans[0] + adjustTranslation[0];
+	vrTrans.v[1] = trans[1] + adjustTranslation[1];
+	vrTrans.v[2] = trans[2] + adjustTranslation[2];
 	return vrTrans;
+}
+
+float GetOffsetForID(uint32_t id)
+{
+	float customScale = 1.0f - CalCtx.customScale;
+
+	switch (CalCtx.offsetsEnabled)
+	{
+		case CalibrationContext::OFFSETS_NONE:
+		default:
+			break;
+		case CalibrationContext::OFFSETS_4_DEVICE_HANDS:
+		{
+			switch (id)
+			{// These are all messed up! Controllers use 2 devices each???
+			case vr::k_unTrackedDeviceIndex_Hmd: // HMD
+				break;
+			case 1: // left hand - dev1
+			case 2: // left hand - dev2
+			case 3: // right hand - dev1
+			case 4: // right hand - dev2
+				return customScale * CalCtx.handsOffsetScale;
+				break;
+			case 5: // waist
+				return customScale * CalCtx.hipOffsetScale;
+				break;
+			case 6: // left foot
+				return customScale * CalCtx.feetOffsetScale;
+				break;
+			case 7: // right foot
+				return customScale * CalCtx.feetOffsetScale;
+				break;
+			default:
+				return customScale * CalCtx.feetOffsetScale;
+				break;
+			}
+		}
+		break;
+		case CalibrationContext::OFFSETS_2_DEVICE_HANDS:
+		{
+			switch (id)
+			{
+			case vr::k_unTrackedDeviceIndex_Hmd: // HMD
+				break;
+			case 1: // left hand
+			case 2: // right hand
+				return customScale * CalCtx.handsOffsetScale;
+				break;
+			case 3: // waist
+				return customScale * CalCtx.hipOffsetScale;
+				break;
+			case 4: // left foot
+				return customScale * CalCtx.feetOffsetScale;
+				break;
+			case 5: // right foot
+				return customScale * CalCtx.feetOffsetScale;
+				break;
+			default:
+				return customScale * CalCtx.feetOffsetScale;
+				break;
+			}
+		}
+	}
+
+	return 0.0f;
 }
 
 void ResetAndDisableOffsets(uint32_t id)
@@ -267,9 +332,22 @@ void ResetAndDisableOffsets(uint32_t id)
 
 	vr::HmdQuaternion_t zeroQ;
 	zeroQ.x = 0; zeroQ.y = 0; zeroQ.z = 0; zeroQ.w = 1;
+	
+	Eigen::Vector3d adjustTranslation;
+	adjustTranslation[0] = adjustTranslation[1] = adjustTranslation[2] = 0;
+	adjustTranslation[1] += GetOffsetForID(id);
+
+	Eigen::Vector3d zeroTranslation;
+	zeroTranslation[0] = zeroTranslation[1] = zeroTranslation[2] = 0;
 
 	protocol::Request req(protocol::RequestSetDeviceTransform);
-	req.setDeviceTransform = { id, false, zeroV, zeroQ };
+	//req.setDeviceTransform = { id, false, zeroV, zeroQ };
+	req.setDeviceTransform = {
+		id,
+		true,
+		VRTranslationVec(zeroTranslation, adjustTranslation),
+		zeroQ
+	};
 	Driver.SendBlocking(req);
 }
 
@@ -333,11 +411,15 @@ void ScanAndApplyProfile(CalibrationContext &ctx)
 			continue;
 		}
 
+		Eigen::Vector3d adjustTranslation;
+		adjustTranslation[0] = adjustTranslation[1] = adjustTranslation[2] = 0;
+		adjustTranslation[1] += GetOffsetForID(id);
+
 		protocol::Request req(protocol::RequestSetDeviceTransform);
 		req.setDeviceTransform = {
 			id,
 			true,
-			VRTranslationVec(ctx.calibratedTranslation),
+			VRTranslationVec(ctx.calibratedTranslation, adjustTranslation),
 			VRRotationQuat(ctx.calibratedRotation)
 		};
 		Driver.SendBlocking(req);
@@ -477,7 +559,10 @@ void CalibrationTick(double time)
 		{
 			ctx.calibratedTranslation = CalibrateTranslation(samples);
 
-			auto vrTrans = VRTranslationVec(ctx.calibratedTranslation);
+			Eigen::Vector3d adjustTranslation;
+			adjustTranslation[0] = adjustTranslation[1] = adjustTranslation[2] = 0;
+
+			auto vrTrans = VRTranslationVec(ctx.calibratedTranslation, adjustTranslation);
 
 			protocol::Request req(protocol::RequestSetDeviceTransform);
 			req.setDeviceTransform = { ctx.targetID, true, vrTrans };
