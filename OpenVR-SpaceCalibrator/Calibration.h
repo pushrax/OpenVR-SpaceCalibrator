@@ -37,6 +37,20 @@ struct CalibrationContext
 	};
 	Speed calibrationSpeed = FAST;
 
+	enum OffsetMode
+	{
+		OFFSETS_NONE = 0,
+		OFFSETS_2_DEVICE_HANDS = 1,
+		OFFSETS_4_DEVICE_HANDS = 2,
+	};
+	OffsetMode offsetsEnabled = OFFSETS_NONE;
+
+	float customScale = 1.0f;
+	float handsOffsetScale = 0.65f;
+	float hipOffsetScale = 1.1f;
+	float feetOffsetScale = 1.25f;
+
+
 	vr::TrackedDevicePose_t devicePoses[vr::k_unMaxTrackedDeviceCount];
 
 	struct Chaperone
