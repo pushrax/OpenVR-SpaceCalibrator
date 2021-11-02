@@ -492,7 +492,7 @@ void BuildProfileEditor()
 
 	TextWithWidth("ScaleLabel", "Scale", width);
 
-	ImGui::InputDouble("##Scale", &CalCtx.calibratedScale, 0.01, 0.1, "%.8f");
+	ImGui::InputDouble("##Scale", &CalCtx.calibratedScale, 0.0001, 0.01, "%.8f");
 	ImGui::PopItemWidth();
 }
 
