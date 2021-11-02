@@ -61,10 +61,14 @@ bool ServerTrackedDeviceProvider::HandleDevicePoseUpdated(uint32_t openVRID, vr:
 	{
 		pose.qWorldFromDriverRotation = tf.rotation * pose.qWorldFromDriverRotation;
 
+		pose.vecPosition[0] *= tf.scale;
+		pose.vecPosition[1] *= tf.scale;
+		pose.vecPosition[2] *= tf.scale;
+
 		vr::HmdVector3d_t rotatedTranslation = quaternionRotateVector(tf.rotation, pose.vecWorldFromDriverTranslation);
-		pose.vecWorldFromDriverTranslation[0] = tf.scale * rotatedTranslation.v[0] + tf.translation.v[0];
-		pose.vecWorldFromDriverTranslation[1] = tf.scale * rotatedTranslation.v[1] + tf.translation.v[1];
-		pose.vecWorldFromDriverTranslation[2] = tf.scale * rotatedTranslation.v[2] + tf.translation.v[2];
+		pose.vecWorldFromDriverTranslation[0] = rotatedTranslation.v[0] + tf.translation.v[0];
+		pose.vecWorldFromDriverTranslation[1] = rotatedTranslation.v[1] + tf.translation.v[1];
+		pose.vecWorldFromDriverTranslation[2] = rotatedTranslation.v[2] + tf.translation.v[2];
 	}
 	return true;
 }
