@@ -31,7 +31,7 @@ void IPCClient::Connect()
 
 	if (pipe == INVALID_HANDLE_VALUE)
 	{
-		throw std::runtime_error("Space Calibrator driver unavailable, is SteamVR running and not in safe mode? Error: " + LastErrorString(GetLastError()));
+		throw std::runtime_error("Space Calibrator driver unavailable. Make sure SteamVR is running, and the Space Calibrator addon is enabled in SteamVR settings.");
 	}
 
 	DWORD mode = PIPE_READMODE_MESSAGE;
