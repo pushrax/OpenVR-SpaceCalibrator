@@ -54,6 +54,11 @@ static void ParseProfile(CalibrationContext &ctx, std::istream &stream)
 	ctx.calibratedTranslation(1) = obj["y"].get<double>();
 	ctx.calibratedTranslation(2) = obj["z"].get<double>();
 
+	if (obj["scale"].is<double>())
+		ctx.calibratedScale = obj["scale"].get<double>();
+	else
+		ctx.calibratedScale = 1.0;
+
 	if (obj["calibration_speed"].is<double>())
 		ctx.calibrationSpeed = (CalibrationContext::Speed)(int) obj["calibration_speed"].get<double>();
 
@@ -101,6 +106,7 @@ static void WriteProfile(CalibrationContext &ctx, std::ostream &out)
 	profile["x"].set<double>(ctx.calibratedTranslation(0));
 	profile["y"].set<double>(ctx.calibratedTranslation(1));
 	profile["z"].set<double>(ctx.calibratedTranslation(2));
+	profile["scale"].set<double>(ctx.calibratedScale);
 
 	double speed = (int) ctx.calibrationSpeed;
 	profile["calibration_speed"].set<double>(speed);

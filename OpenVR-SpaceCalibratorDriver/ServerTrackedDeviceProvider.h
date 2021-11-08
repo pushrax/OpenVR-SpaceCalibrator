@@ -46,6 +46,7 @@ private:
 		bool enabled = false;
 		vr::HmdVector3d_t translation;
 		vr::HmdQuaternion_t rotation;
+		double scale;
 	};
 
 	DeviceTransform transforms[vr::k_unMaxTrackedDeviceCount];

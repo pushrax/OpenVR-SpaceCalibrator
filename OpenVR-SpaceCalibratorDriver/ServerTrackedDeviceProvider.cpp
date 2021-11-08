@@ -49,6 +49,9 @@ void ServerTrackedDeviceProvider::SetDeviceTransform(const protocol::SetDeviceTr
 
 	if (newTransform.updateRotation)
 		tf.rotation = newTransform.rotation;
+
+	if (newTransform.updateScale)
+		tf.scale = newTransform.scale;
 }
 
 bool ServerTrackedDeviceProvider::HandleDevicePoseUpdated(uint32_t openVRID, vr::DriverPose_t &pose)
@@ -57,6 +60,10 @@ bool ServerTrackedDeviceProvider::HandleDevicePoseUpdated(uint32_t openVRID, vr:
 	if (tf.enabled)
 	{
 		pose.qWorldFromDriverRotation = tf.rotation * pose.qWorldFromDriverRotation;
+
+		pose.vecPosition[0] *= tf.scale;
+		pose.vecPosition[1] *= tf.scale;
+		pose.vecPosition[2] *= tf.scale;
 
 		vr::HmdVector3d_t rotatedTranslation = quaternionRotateVector(tf.rotation, pose.vecWorldFromDriverTranslation);
 		pose.vecWorldFromDriverTranslation[0] = rotatedTranslation.v[0] + tf.translation.v[0];

@@ -269,7 +269,7 @@ void ResetAndDisableOffsets(uint32_t id)
 	zeroQ.x = 0; zeroQ.y = 0; zeroQ.z = 0; zeroQ.w = 1;
 
 	protocol::Request req(protocol::RequestSetDeviceTransform);
-	req.setDeviceTransform = { id, false, zeroV, zeroQ };
+	req.setDeviceTransform = { id, false, zeroV, zeroQ, 1.0 };
 	Driver.SendBlocking(req);
 }
 
@@ -338,7 +338,8 @@ void ScanAndApplyProfile(CalibrationContext &ctx)
 			id,
 			true,
 			VRTranslationVec(ctx.calibratedTranslation),
-			VRRotationQuat(ctx.calibratedRotation)
+			VRRotationQuat(ctx.calibratedRotation),
+			ctx.calibratedScale
 		};
 		Driver.SendBlocking(req);
 	}
