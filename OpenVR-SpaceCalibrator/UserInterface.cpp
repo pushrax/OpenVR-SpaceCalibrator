@@ -2,14 +2,13 @@
 #include "UserInterface.h"
 #include "Calibration.h"
 #include "Configuration.h"
+#include "../Version.h"
 
 #include <thread>
 #include <string>
 #include <vector>
 #include <algorithm>
 #include <imgui/imgui.h>
-
-#define VERSION_STRING "1.2"
 
 struct VRDevice
 {
@@ -173,7 +172,7 @@ void BuildMenu(bool runningInOverlay)
 
 	ImGui::SetNextWindowPos(ImVec2(10.0f, ImGui::GetWindowHeight() - ImGui::GetItemsLineHeightWithSpacing()));
 	ImGui::BeginChild("bottom line", ImVec2(ImGui::GetWindowWidth() - 20.0f, ImGui::GetItemsLineHeightWithSpacing() * 2), false);
-	ImGui::Text("OpenVR Space Calibrator v" VERSION_STRING " - by tach/pushrax");
+	ImGui::Text("OpenVR Space Calibrator v" SPACECAL_VERSION_STRING " - by tach/pushrax");
 	if (runningInOverlay)
 	{
 		ImGui::SameLine();

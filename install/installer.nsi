@@ -98,7 +98,7 @@ Section "Install" SecInstall
 
 	File "..\LICENSE"
 	File "..\x64\Release\OpenVR-SpaceCalibrator.exe"
-	File "..\x64\Release\openvr_api.dll"
+	File "..\lib\openvr\lib\win64\openvr_api.dll"
 	File "..\OpenVR-SpaceCalibrator\manifest.vrmanifest"
 	File "..\OpenVR-SpaceCalibrator\icon.png"
 

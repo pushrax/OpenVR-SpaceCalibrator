@@ -85,6 +85,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="..\Version.h" />
     <ClInclude Include="Calibration.h" />
     <ClInclude Include="Configuration.h" />
     <ClInclude Include="EmbeddedFiles.h" />

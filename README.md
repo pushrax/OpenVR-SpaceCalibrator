@@ -44,7 +44,7 @@ You can calibrate without using the dashboard overlay by unminimizing Space Cali
 
 ### Compiling your own build
 
-Open `OpenVR-SpaceCalibrator.sln` in Visual Studio 2015 and build. There are no external dependencies.
+Open `OpenVR-SpaceCalibrator.sln` in Visual Studio 2017 and build. There are no external dependencies.
 
 ### The math
 

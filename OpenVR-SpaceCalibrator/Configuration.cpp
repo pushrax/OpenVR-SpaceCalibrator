@@ -202,6 +202,7 @@ void LoadProfile(CalibrationContext &ctx)
 	if (str == "")
 	{
 		std::cout << "Profile is empty" << std::endl;
+		ctx.Clear();
 		return;
 	}
 
