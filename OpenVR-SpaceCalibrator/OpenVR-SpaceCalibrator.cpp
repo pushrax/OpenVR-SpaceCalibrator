@@ -1,4 +1,4 @@
-#include "stdafx.h"
+﻿#include "stdafx.h"
 #include "Calibration.h"
 #include "Configuration.h"
 #include "EmbeddedFiles.h"
@@ -35,11 +35,17 @@ void CreateConsole()
 	}
 }
 
+//#define DEBUG_LOGS
+
 void GLFWErrorCallback(int error, const char* description)
 {
 	fprintf(stderr, "GLFW Error %d: %s\n", error, description);
 }
 
+void openGLDebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar *message, const void *userParam)
+{
+	fprintf(stderr, "OpenGL Debug %u: %.*s\n", id, length, message);
+}
 
 static void HandleCommandLine(LPWSTR lpCmdLine);
 
@@ -57,6 +63,10 @@ void CreateGLFWWindow()
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 	glfwWindowHint(GLFW_RESIZABLE, false);
 
+#ifdef DEBUG_LOGS
+	glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GL_TRUE);
+#endif
+
 	fboTextureWidth = 1200;
 	fboTextureHeight = 800;
 
@@ -70,8 +80,13 @@ void CreateGLFWWindow()
 
 	glfwIconifyWindow(glfwWindow);
 
+#ifdef DEBUG_LOGS
+	glDebugMessageCallback(openGLDebugCallback, nullptr);
+	glEnable(GL_DEBUG_OUTPUT);
+#endif
+
 	ImGui::CreateContext();
-	ImGuiIO& io = ImGui::GetIO();
+	ImGuiIO &io = ImGui::GetIO();
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
 	io.IniFilename = nullptr;
@@ -84,7 +99,7 @@ void CreateGLFWWindow()
 
 	glGenTextures(1, &fboTextureHandle);
 	glBindTexture(GL_TEXTURE_2D, fboTextureHandle);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, fboTextureWidth, fboTextureHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, fboTextureWidth, fboTextureHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 
@@ -300,7 +315,7 @@ void RunLoop()
 		{
 			vr::Texture_t vrTex;
 			vrTex.eType = vr::TextureType_OpenGL;
-			vrTex.eColorSpace = vr::ColorSpace_Linear;
+			vrTex.eColorSpace = vr::ColorSpace_Auto;
 
 			vrTex.handle = (void *)
 #if defined _WIN64 || defined _LP64
@@ -328,7 +343,10 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 {
 	_getcwd(cwd, MAX_PATH);
 	HandleCommandLine(lpCmdLine);
-	//CreateConsole();
+
+#ifdef DEBUG_LOGS
+	CreateConsole();
+#endif
 
 	if (!glfwInit())
 	{
