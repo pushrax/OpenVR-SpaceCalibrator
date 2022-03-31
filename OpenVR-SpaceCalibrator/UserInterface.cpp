@@ -155,13 +155,23 @@ void BuildMenu(bool runningInOverlay)
 
 		ImGui::Columns(1);
 	}
-	else if (CalCtx.state == CalibrationState::Editing)
+	else if (CalCtx.state == CalibrationState::Editing || CalCtx.state == CalibrationState::Referencing)
 	{
 		BuildProfileEditor();
 
 		if (ImGui::Button("Save Profile", ImVec2(ImGui::GetWindowContentRegionWidth(), ImGui::GetTextLineHeight() * 2)))
 		{
 			SaveProfile(CalCtx);
+			CalCtx.state = CalibrationState::None;
+		}
+
+		ImGui::Text("\n");
+		ImGui::Text("Close the steam menu to grab the target space and fine adjust with the reference grip button.\n");
+		ImGui::Text("When you let go it will save the profile.\n");
+		ImGui::Text("\n");
+
+		if (ImGui::Button("Back", ImVec2(ImGui::GetWindowContentRegionWidth(), ImGui::GetTextLineHeight() * 2)))
+		{
 			CalCtx.state = CalibrationState::None;
 		}
 	}
