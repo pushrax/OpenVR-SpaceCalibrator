@@ -10,6 +10,27 @@
 #include <Eigen/Dense>
 
 
+inline vr::HmdQuaternion_t operator*(const vr::HmdQuaternion_t& lhs, const vr::HmdQuaternion_t& rhs) {
+	return {
+		(lhs.w * rhs.w) - (lhs.x * rhs.x) - (lhs.y * rhs.y) - (lhs.z * rhs.z),
+		(lhs.w * rhs.x) + (lhs.x * rhs.w) + (lhs.y * rhs.z) - (lhs.z * rhs.y),
+		(lhs.w * rhs.y) + (lhs.y * rhs.w) + (lhs.z * rhs.x) - (lhs.x * rhs.z),
+		(lhs.w * rhs.z) + (lhs.z * rhs.w) + (lhs.x * rhs.y) - (lhs.y * rhs.x)
+	};
+}
+
+inline vr::HmdVector3d_t quaternionRotateVector(const vr::HmdQuaternion_t& quat, const double(&vector)[3]) {
+	vr::HmdQuaternion_t vectorQuat = { 0.0, vector[0], vector[1] , vector[2] };
+	vr::HmdQuaternion_t conjugate = { quat.w, -quat.x, -quat.y, -quat.z };
+	auto rotatedVectorQuat = quat * vectorQuat * conjugate;
+	return { rotatedVectorQuat.x, rotatedVectorQuat.y, rotatedVectorQuat.z };
+}
+
+inline Eigen::Matrix3d quaternionRotateMatrix(const vr::HmdQuaternion_t& quat) {
+	return Eigen::Quaterniond(quat.w, quat.x, quat.y, quat.z).toRotationMatrix();
+}
+
+
 static IPCClient Driver;
 CalibrationContext CalCtx;
 
@@ -462,34 +483,30 @@ void CalibrationTick(double time)
 	if (samples.size() == CalCtx.SampleCount())
 	{
 		CalCtx.Log("\n");
-		if (ctx.state == CalibrationState::Rotation)
-		{
-			ctx.calibratedRotation = CalibrateRotation(samples);
 
-			auto vrRotQuat = VRRotationQuat(ctx.calibratedRotation);
+		ctx.calibratedRotation = CalibrateRotation(samples);
 
-			protocol::Request req(protocol::RequestSetDeviceTransform);
-			req.setDeviceTransform = { ctx.targetID, true, vrRotQuat };
-			Driver.SendBlocking(req);
+		auto vrRotQuat = VRRotationQuat(ctx.calibratedRotation);
 
-			ctx.state = CalibrationState::Translation;
+		for (auto &sample : samples) {
+			const auto rotMat = quaternionRotateMatrix(vrRotQuat);
+			sample.target.rot = rotMat * sample.target.rot;
+			sample.target.trans = rotMat * sample.target.trans;
 		}
-		else if (ctx.state == CalibrationState::Translation)
-		{
-			ctx.calibratedTranslation = CalibrateTranslation(samples);
 
-			auto vrTrans = VRTranslationVec(ctx.calibratedTranslation);
+		ctx.calibratedTranslation = CalibrateTranslation(samples);
 
-			protocol::Request req(protocol::RequestSetDeviceTransform);
-			req.setDeviceTransform = { ctx.targetID, true, vrTrans };
-			Driver.SendBlocking(req);
+		auto vrTrans = VRTranslationVec(ctx.calibratedTranslation);
 
-			ctx.validProfile = true;
-			SaveProfile(ctx);
-			CalCtx.Log("Finished calibration, profile saved\n");
+		protocol::Request req(protocol::RequestSetDeviceTransform);
+		req.setDeviceTransform = { ctx.targetID, true, vrTrans, vrRotQuat };
+		Driver.SendBlocking(req);
 
-			ctx.state = CalibrationState::None;
-		}
+		ctx.validProfile = true;
+		SaveProfile(ctx);
+		CalCtx.Log("Finished calibration, profile saved\n");
+
+		ctx.state = CalibrationState::None;
 
 		samples.clear();
 	}
