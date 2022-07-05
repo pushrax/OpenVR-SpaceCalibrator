@@ -55,6 +55,19 @@ struct Pose
 		trans = Eigen::Vector3d(hmdMatrix.m[0][3], hmdMatrix.m[1][3], hmdMatrix.m[2][3]);
 	}
 	Pose(double x, double y, double z) : trans(Eigen::Vector3d(x,y,z)) { }
+
+	Eigen::Matrix4d ToAffine() const {
+		Eigen::Matrix4d matrix = Eigen::Matrix4d::Identity();
+
+		for (int i = 0; i < 3; i++) {
+			for (int j = 0; j < 3; j++) {
+				matrix(i,j) = rot(i, j);
+			}
+			matrix(i, 3) = trans(i);
+		}
+
+		return matrix;
+	}
 };
 
 struct Sample
@@ -379,6 +392,117 @@ void ScanAndApplyProfile(CalibrationContext &ctx)
 	}
 }
 
+Pose ApplyTransform(const Pose& originalPose, const Eigen::Vector3d& vrTrans, const Eigen::Matrix3d& rotMat) {
+	Pose pose(originalPose);
+	pose.rot = rotMat * pose.rot;
+	pose.trans = vrTrans + (rotMat * pose.trans);
+	return pose;
+}
+
+double RetargetingErrorRMS(
+	const std::vector<Sample>& samples,
+	const Eigen::Vector4d &hmdToTargetPos,
+	const vr::HmdVector3d_t& vrTrans,
+	const vr::HmdQuaternion_t& vrRotQuat
+) {
+	const auto rotMat = quaternionRotateMatrix(vrRotQuat);
+	const auto trans = Eigen::Vector3d(vrTrans.v);
+
+	double errorAccum = 0;
+	int sampleCount = 0;
+	for (auto& sample : samples) {
+		if (!sample.valid) continue;
+
+		// Apply transformation
+		const auto updatedPose = ApplyTransform(sample.target, trans, rotMat);
+		const Eigen::Vector4d targetToWorld = Eigen::Vector4d(updatedPose.trans(0), updatedPose.trans(1), updatedPose.trans(2), 1);
+
+		// Now compute it based on the HMD pose offset
+		const Eigen::Vector4d hmdAffine = sample.ref.ToAffine() * hmdToTargetPos;
+
+		// Compute error term
+		errorAccum += (hmdAffine - targetToWorld).squaredNorm();
+		sampleCount++;
+	}
+
+	return sqrt(errorAccum / sampleCount);
+}
+
+Eigen::Vector4d DeriveRefToTargetOffset(
+	const std::vector<Sample>& samples,
+	const vr::HmdVector3d_t& vrTrans,
+	const vr::HmdQuaternion_t& vrRotQuat
+) {
+	const auto rotMat = quaternionRotateMatrix(vrRotQuat);
+	const auto trans = Eigen::Vector3d(vrTrans.v);
+
+	Eigen::Vector4d accum = Eigen::Vector4d::Zero();
+	int sampleCount = 0;
+
+	for (auto& sample : samples) {
+		if (!sample.valid) continue;
+
+		// Apply transformation
+		const auto updatedPose = ApplyTransform(sample.target, trans, rotMat);
+
+		// Now move the transform from world to HMD space
+		const auto trans4 = Eigen::Vector4d(updatedPose.trans(0), updatedPose.trans(1), updatedPose.trans(2), 1);
+		const auto hmdSpace = sample.ref.ToAffine().inverse() * trans4;
+
+		accum += hmdSpace;
+		sampleCount++;
+	}
+
+	accum /= sampleCount;
+	accum(3) = 1; // Ensure we're precisely in affine form
+
+	return accum;
+}
+
+/**
+ * Determines how sensitive the sampled data is to changes in the calibrated rot/trans values.
+ */
+bool ComputeSensitivity(
+	CalibrationContext& CalCtx,
+	const std::vector<Sample>& samples,
+	const vr::HmdVector3d_t& vrTrans,
+	const vr::HmdQuaternion_t& vrRotQuat
+) {
+	bool reject = false;
+	const auto posOffset = DeriveRefToTargetOffset(samples, vrTrans, vrRotQuat);
+	char buf[256];
+
+	snprintf(buf, sizeof buf, "HMD to target offset: (%.2f, %.2f, %.2f)\n", posOffset(0), posOffset(1), posOffset(2));
+	CalCtx.Log(buf);
+
+	double baseError = RetargetingErrorRMS(samples, posOffset, vrTrans, vrRotQuat);
+	snprintf(buf, sizeof buf, "Position error (RMS error): %.2f\n", baseError);
+	CalCtx.Log(buf);
+	if (baseError > 0.1) reject = true;
+
+	// Compute errors with rotation perturbations
+
+	double deltaError = RetargetingErrorRMS(samples, posOffset, vrTrans, VRRotationQuat(Eigen::Vector3d(10, 0, 0)) * vrRotQuat) - baseError;
+	if (deltaError < 0.2) reject = true;
+
+	snprintf(buf, sizeof buf, "Sensitivity rotation X (RMS error delta): %.2f\n", deltaError);
+	CalCtx.Log(buf);
+
+	deltaError = RetargetingErrorRMS(samples, posOffset, vrTrans, VRRotationQuat(Eigen::Vector3d(0, 10, 0)) * vrRotQuat) - baseError;
+	if (deltaError < 0.2) reject = true;
+
+	snprintf(buf, sizeof buf, "Sensitivity rotation Y (RMS error delta): %.2f\n", deltaError);
+	CalCtx.Log(buf);
+
+	deltaError = RetargetingErrorRMS(samples, posOffset, vrTrans, VRRotationQuat(Eigen::Vector3d(0, 0, 10)) * vrRotQuat) - baseError;
+	if (deltaError < 0.2) reject = true;
+
+	snprintf(buf, sizeof buf, "Sensitivity rotation Z (RMS error delta): %.2f\n", deltaError);
+	CalCtx.Log(buf);
+
+	return reject;
+}
+
 void StartCalibration()
 {
 	CalCtx.state = CalibrationState::Begin;
@@ -488,6 +612,8 @@ void CalibrationTick(double time)
 
 		auto vrRotQuat = VRRotationQuat(ctx.calibratedRotation);
 
+		static std::vector<Sample> samplesOriginal = samples;
+
 		for (auto &sample : samples) {
 			const auto rotMat = quaternionRotateMatrix(vrRotQuat);
 			sample.target.rot = rotMat * sample.target.rot;
@@ -497,6 +623,13 @@ void CalibrationTick(double time)
 		ctx.calibratedTranslation = CalibrateTranslation(samples);
 
 		auto vrTrans = VRTranslationVec(ctx.calibratedTranslation);
+
+		if (ComputeSensitivity(CalCtx, samplesOriginal, vrTrans, vrRotQuat)) {
+			CalCtx.Log("\n\n!!! Rejecting low quality calibration !!!\n");
+			ctx.state = CalibrationState::None;
+			samples.clear();
+			return;
+		}
 
 		protocol::Request req(protocol::RequestSetDeviceTransform);
 		req.setDeviceTransform = { ctx.targetID, true, vrTrans, vrRotQuat };
