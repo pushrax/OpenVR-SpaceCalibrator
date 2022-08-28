@@ -4,23 +4,43 @@
 #include "EmbeddedFiles.h"
 #include "UserInterface.h"
 
+#include <string>
+#include <codecvt>
+#include <locale>
+#include <GL/gl3w.h>
+
+#if  !defined(_WIN32) && !defined(_WIN64)
+#include <unistd.h>
+#else
+#include <direct.h>
+#endif
+
 #include <imgui/imgui.h>
 #include <imgui/imgui_impl_glfw.h>
 #include <imgui/imgui_impl_opengl3.h>
-#include <GL/gl3w.h>
+
+
 #include <GLFW/glfw3.h>
 #include <openvr.h>
-#include <direct.h>
 
+#if  !defined(_WIN32) && !defined(_WIN64)
+//NOP
+#else
 #pragma comment(linker,"\"/manifestdependency:type='win32' \
 name='Microsoft.Windows.Common-Controls' version='6.0.0.0' \
 processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
+#endif
 
 #define OPENVR_APPLICATION_KEY "pushrax.SpaceCalibrator"
 
+#if  !defined(_WIN32) && !defined(_WIN64)
+#else
 extern "C" __declspec(dllexport) DWORD NvOptimusEnablement = 0x00000001;
 extern "C" __declspec(dllexport) DWORD AmdPowerXpressRequestHighPerformance = 0x00000001;
+#endif
 
+//#define DEBUG_LOGS
+#ifdef DEBUG_LOGS
 void CreateConsole()
 {
 	static bool created = false;
@@ -34,20 +54,22 @@ void CreateConsole()
 		created = true;
 	}
 }
-
-//#define DEBUG_LOGS
+#endif
 
 void GLFWErrorCallback(int error, const char* description)
 {
 	fprintf(stderr, "GLFW Error %d: %s\n", error, description);
 }
 
-void openGLDebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar *message, const void *userParam)
+void openGLDebugCallback(GLenum /* source */, GLenum /* type */, GLuint id, GLenum /* severity */, GLsizei length, const GLchar *message, const void * /* userParam */ )
 {
 	fprintf(stderr, "OpenGL Debug %u: %.*s\n", id, length, message);
 }
-
+#if  !defined(_WIN32) && !defined(_WIN64)
+static void HandleCommandLine(wchar_t const * lpCmdLine);
+#else
 static void HandleCommandLine(LPWSTR lpCmdLine);
+#endif
 
 static GLFWwindow *glfwWindow = nullptr;
 static vr::VROverlayHandle_t overlayMainHandle = 0, overlayThumbnailHandle = 0;
@@ -339,9 +361,41 @@ void RunLoop()
 	}
 }
 
-int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPWSTR lpCmdLine, _In_ int nCmdShow)
+using convert_t = std::codecvt_utf8<wchar_t>;
+std::wstring_convert<convert_t, wchar_t> strconverter;
+
+std::string to_string(std::wstring wstr)
 {
+    return strconverter.to_bytes(wstr);
+}
+
+std::wstring to_wstring(std::string str)
+{
+    return strconverter.from_bytes(str);
+}
+
+#if  !defined(_WIN32) && !defined(_WIN64)
+int main(int argc, char ** argv)
+#else
+int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPWSTR lpCmdLine, _In_ int nCmdShow)
+#endif
+{
+
+#if  !defined(_WIN32) && !defined(_WIN64)
+    wchar_t const * lpCmdLine;
+    std::wstring wide;
+    for(int i=1; i<argc; i++){
+        wide += to_wstring(argv[i]);
+    }
+    lpCmdLine = wide.c_str();
+	if( !getcwd(cwd, MAX_PATH) ){
+        std::cerr << "Could not get the current working directory" << std::endl;
+        return 1;
+    }
+#else
 	_getcwd(cwd, MAX_PATH);
+#endif
+
 	HandleCommandLine(lpCmdLine);
 
 #ifdef DEBUG_LOGS
@@ -389,10 +443,27 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 	glfwTerminate();
 	return 0;
 }
+#if  !defined(_WIN32) && !defined(_WIN64)
+bool StringMatch(wchar_t const * first, wchar_t const * second) {
+#else
+bool StringMatch(LPWSTR first, LPWSTR second) {
+#endif
+    bool ret;
+#if  !defined(_WIN32) && !defined(_WIN64)
+	ret =  wcscmp(first, second) == 0;
+#else
+	ret =  lstrcmp(first, second) == 0;
+#endif
+    return ret;
+}
 
+#if  !defined(_WIN32) && !defined(_WIN64)
+static void HandleCommandLine(wchar_t const * lpCmdLine)
+#else
 static void HandleCommandLine(LPWSTR lpCmdLine)
+#endif
 {
-	if (lstrcmp(lpCmdLine, L"-openvrpath") == 0)
+	if (StringMatch(lpCmdLine, L"-openvrpath"))
 	{
 		auto vrErr = vr::VRInitError_None;
 		vr::VR_Init(&vrErr, vr::VRApplication_Utility);
@@ -410,7 +481,7 @@ static void HandleCommandLine(LPWSTR lpCmdLine)
 		vr::VR_Shutdown();
 		exit(-2);
 	}
-	else if (lstrcmp(lpCmdLine, L"-installmanifest") == 0)
+	else if (StringMatch(lpCmdLine, L"-installmanifest"))
 	{
 		auto vrErr = vr::VRInitError_None;
 		vr::VR_Init(&vrErr, vr::VRApplication_Utility);
@@ -452,7 +523,7 @@ static void HandleCommandLine(LPWSTR lpCmdLine)
 		vr::VR_Shutdown();
 		exit(-2);
 	}
-	else if (lstrcmp(lpCmdLine, L"-removemanifest") == 0)
+	else if (StringMatch(lpCmdLine, L"-removemanifest"))
 	{
 		auto vrErr = vr::VRInitError_None;
 		vr::VR_Init(&vrErr, vr::VRApplication_Utility);
@@ -472,7 +543,7 @@ static void HandleCommandLine(LPWSTR lpCmdLine)
 		vr::VR_Shutdown();
 		exit(-2);
 	}
-	else if (lstrcmp(lpCmdLine, L"-activatemultipledrivers") == 0)
+	else if (StringMatch(lpCmdLine, L"-activatemultipledrivers"))
 	{
 		int ret = -2;
 		auto vrErr = vr::VRInitError_None;

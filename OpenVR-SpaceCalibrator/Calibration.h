@@ -87,7 +87,7 @@ struct CalibrationContext
 			Progress
 		} type = String;
 
-		Message(Type type) : type(type) { }
+		Message(Type _type) : type(_type) { }
 
 		std::string str;
 		int progress, target;

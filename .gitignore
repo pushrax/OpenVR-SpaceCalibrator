@@ -8,3 +8,10 @@ ipch
 /OpenVR-SpaceCalibratorDriver/x64/
 /x64/
 /lib/boost*
+*.o
+*.a
+*.srctrlprj
+*.srctrldb
+*.srctrlbm
+*.out
+OpenVR-SpaceCalibratorDriver/01spacecalibrator/bin/linux64/

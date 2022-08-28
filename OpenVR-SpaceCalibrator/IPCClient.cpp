@@ -1,8 +1,12 @@
 #include "stdafx.h"
 #include "IPCClient.h"
+#include "Comms.h"
 
 #include <string>
 
+#if  !defined(_WIN32) && !defined(_WIN64)
+// NOP
+#else
 static std::string LastErrorString(DWORD lastError)
 {
 	LPSTR buffer = nullptr;
@@ -15,15 +19,22 @@ static std::string LastErrorString(DWORD lastError)
 	LocalFree(buffer);
 	return message;
 }
+#endif
 
 IPCClient::~IPCClient()
 {
+#if  !defined(_WIN32) && !defined(_WIN64)
+    //NOP
+#else
 	if (pipe && pipe != INVALID_HANDLE_VALUE)
 		CloseHandle(pipe);
+#endif
 }
 
 void IPCClient::Connect()
 {
+#if  !defined(_WIN32) && !defined(_WIN64)
+#else
 	LPTSTR pipeName = TEXT(OPENVR_SPACECALIBRATOR_PIPE_NAME);
 
 	WaitNamedPipe(pipeName, 1000);
@@ -39,7 +50,7 @@ void IPCClient::Connect()
 	{
 		throw std::runtime_error("Couldn't set pipe mode. Error: " + LastErrorString(GetLastError()));
 	}
-
+#endif
 	auto response = SendBlocking(protocol::Request(protocol::RequestHandshake));
 	if (response.type != protocol::ResponseHandshake || response.protocol.version != protocol::Version)
 	{
@@ -61,17 +72,25 @@ protocol::Response IPCClient::SendBlocking(const protocol::Request &request)
 
 void IPCClient::Send(const protocol::Request &request)
 {
+#if  !defined(_WIN32) && !defined(_WIN64)
+    pipe.Send(request);
+#else
 	DWORD bytesWritten;
 	BOOL success = WriteFile(pipe, &request, sizeof request, &bytesWritten, 0);
 	if (!success)
 	{
 		throw std::runtime_error("Error writing IPC request. Error: " + LastErrorString(GetLastError()));
 	}
+#endif
 }
 
 protocol::Response IPCClient::Receive()
 {
 	protocol::Response response(protocol::ResponseInvalid);
+#if  !defined(_WIN32) && !defined(_WIN64)
+    pipe.Recv(&response);
+    return response;
+#else
 	DWORD bytesRead;
 
 	BOOL success = ReadFile(pipe, &response, sizeof response, &bytesRead, 0);
@@ -90,4 +109,5 @@ protocol::Response IPCClient::Receive()
 	}
 
 	return response;
+#endif
 }

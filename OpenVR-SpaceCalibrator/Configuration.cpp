@@ -4,7 +4,7 @@
 #include <picojson.h>
 
 #include <string>
-#include <iostream>
+#include "stdio.h"
 #include <fstream>
 #include <iomanip>
 #include <limits>
@@ -25,7 +25,7 @@ static void LoadFloatArray(const picojson::value &obj, float *buf, int numFloats
 		throw std::runtime_error("expected array, got " + obj.to_str());
 
 	auto &arr = obj.get<picojson::array>();
-	if (arr.size() != numFloats)
+	if (arr.size() != (size_t) numFloats)
 		throw std::runtime_error("wrong buffer size");
 
 	for (int i = 0; i < numFloats; i++)
@@ -142,17 +142,39 @@ static void WriteProfile(CalibrationContext &ctx, std::ostream &out)
 	out << profilesV.serialize(true);
 }
 
+#if  !defined(_WIN32) && !defined(_WIN64)
+// NOP
+#else
+static const char *RegistryKey = "Software\\OpenVR-SpaceCalibrator";
 static void LogRegistryResult(LSTATUS result)
 {
 	char *message;
 	FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_ALLOCATE_BUFFER, 0, result, LANG_USER_DEFAULT, (LPSTR)&message, 0, NULL);
 	std::cerr << "Opening registry key: " << message << std::endl;
 }
-
-static const char *RegistryKey = "Software\\OpenVR-SpaceCalibrator";
+#endif
 
 static std::string ReadRegistryKey()
 {
+#if  !defined(_WIN32) && !defined(_WIN64)
+    FILE* file = fopen(LINUX_CONFIG_FILE, "r");
+    if(!file) return "";
+
+    std::string ret;
+    const int buffSize = 4097;
+    int count = 0;
+    char buff[buffSize];
+    buff[buffSize-1] = 0;
+
+    do{
+        count = fread((void*) buff, 1, buffSize, file);
+        if(count > 0){
+            ret += buff;
+        }
+    }while(buffSize == count);
+    fclose(file);
+    return ret;
+#else
 	DWORD size = 0;
 	auto result = RegGetValueA(HKEY_CURRENT_USER_LOCAL_SETTINGS, RegistryKey, "Config", RRF_RT_REG_SZ, 0, 0, &size);
 	if (result != ERROR_SUCCESS)
@@ -173,10 +195,19 @@ static std::string ReadRegistryKey()
 	
 	str.resize(size - 1);
 	return str;
+#endif
 }
 
 static void WriteRegistryKey(std::string str)
 {
+#if  !defined(_WIN32) && !defined(_WIN64)
+    FILE* file = fopen(LINUX_CONFIG_FILE, "w");
+    if(!file) std::cerr << "Error opening config file for writing";
+
+    fprintf(file, "%s", str.c_str());
+
+    fclose(file);
+#else
 	HKEY hkey;
 	auto result = RegCreateKeyExA(HKEY_CURRENT_USER_LOCAL_SETTINGS, RegistryKey, 0, REG_NONE, 0, KEY_ALL_ACCESS, 0, &hkey, 0);
 	if (result != ERROR_SUCCESS)
@@ -192,6 +223,7 @@ static void WriteRegistryKey(std::string str)
 		LogRegistryResult(result);
 
 	RegCloseKey(hkey);
+#endif
 }
 
 void LoadProfile(CalibrationContext &ctx)

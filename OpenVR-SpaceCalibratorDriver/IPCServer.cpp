@@ -2,6 +2,13 @@
 #include "Logging.h"
 #include "ServerTrackedDeviceProvider.h"
 
+#if  !defined(_WIN32) && !defined(_WIN64)
+#include "Comms.h"
+#else
+
+#endif
+
+
 void IPCServer::HandleRequest(const protocol::Request &request, protocol::Response &response)
 {
 	switch (request.type)
@@ -34,17 +41,23 @@ void IPCServer::Run()
 
 void IPCServer::Stop()
 {
-	TRACE("IPCServer::Stop()");
+	TRACE("%s", "IPCServer::Stop()");
 	if (!running)
 		return;
-
 	stop = true;
+
+#if  !defined(_WIN32) && !defined(_WIN64)
+    //NOP
+#else
 	SetEvent(connectEvent);
 	mainThread.join();
 	running = false;
 	TRACE("IPCServer::Stop() finished");
+#endif
 }
-
+#if  !defined(_WIN32) && !defined(_WIN64)
+    //NOP
+#else
 IPCServer::PipeInstance *IPCServer::CreatePipeInstance(HANDLE pipe)
 {
 	auto pipeInst = new PipeInstance;
@@ -61,9 +74,23 @@ void IPCServer::ClosePipeInstance(PipeInstance *pipeInst)
 	pipes.erase(pipeInst);
 	delete pipeInst;
 }
+#endif
 
 void IPCServer::RunThread(IPCServer *_this)
 {
+#if  !defined(_WIN32) && !defined(_WIN64)
+    Comms<protocol::Response, protocol::Request> comms;
+
+    protocol::Response response;
+    protocol::Request request;
+
+    while(!_this->stop){
+        comms.Recv(&request);
+        _this->HandleRequest(request, response);
+        comms.Send(response);
+    }
+    LOG("%s", "Stop requested");
+#else
 	_this->running = true;
 	LPTSTR pipeName = TEXT(OPENVR_SPACECALIBRATOR_PIPE_NAME);
 
@@ -125,10 +152,15 @@ void IPCServer::RunThread(IPCServer *_this)
 		_this->ClosePipeInstance(pipeInst);
 	}
 	_this->pipes.clear();
+#endif
 }
 
+#if  !defined(_WIN32) && !defined(_WIN64)
+//NOP
+#else
 BOOL IPCServer::CreateAndConnectInstance(LPOVERLAPPED overlap, HANDLE &pipe)
 {
+
 	pipe = CreateNamedPipe(
 		TEXT(OPENVR_SPACECALIBRATOR_PIPE_NAME),
 		PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED,
@@ -218,3 +250,4 @@ void IPCServer::CompletedWriteCallback(DWORD err, DWORD bytesWritten, LPOVERLAPP
 		pipeInst->server->ClosePipeInstance(pipeInst);
 	}
 }
+#endif

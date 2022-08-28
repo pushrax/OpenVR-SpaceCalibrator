@@ -1,12 +1,13 @@
 #define _CRT_SECURE_NO_DEPRECATE
 #include "Logging.h"
 #include <chrono>
+#include <ctime>
 
 FILE *LogFile;
 
 void OpenLogFile()
 {
-	LogFile = fopen("space_calibrator_driver.log", "a");
+	LogFile = fopen("/tmp/space_calibrator_driver.log", "w");
 	if (LogFile == nullptr)
 	{
 		LogFile = stderr;
@@ -15,12 +16,18 @@ void OpenLogFile()
 
 tm TimeForLog()
 {
+    if(LogFile == nullptr){
+        OpenLogFile();
+    }
+
 	auto now = std::chrono::system_clock::now();
 	auto nowTime = std::chrono::system_clock::to_time_t(now);
-	tm value;
-	auto tm = localtime_s(&value, &nowTime);
-	return value;
+	tm buf;
+	auto tm = localtime_r(&nowTime, &buf);
+	return *tm;
 }
+
+
 
 void LogFlush()
 {

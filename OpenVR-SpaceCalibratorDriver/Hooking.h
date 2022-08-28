@@ -1,7 +1,16 @@
 #pragma once
 
 #include "Logging.h"
+
+#if  !defined(_WIN32) && !defined(_WIN64)
+#include <unistd.h>
+#include "string.h"
+#include <sys/mman.h>
+#else
 #include <MinHook.h>
+#endif
+
+
 #include <map>
 #include <string>
 
@@ -30,9 +39,41 @@ public:
 	FuncType originalFunc = nullptr;
 	Hook(const std::string &name) : IHook(name) { }
 
-	bool CreateHookInObjectVTable(void *object, int vtableOffset, void *detourFunction)
+#if  !defined(_WIN32) && !defined(_WIN64)
+    template<typename T>
+	bool CreateHookInObjectVTable(void *object, int vtableOffset, T* detourFunction)
 	{
-		// For virtual objects, VC++ adds a pointer to the vtable as the first member.
+   		// For virtual objects, VC++ (and from what I can tell gcc)  adds a pointer to the vtable as the first member.
+		// To access the vtable, we simply dereference the object.
+		void **vtable = *((void ***)object);
+
+		// The vtable itself is an array of pointers to member functions,
+		// in the order they were declared in.
+        originalFunc = (FuncType) vtable[vtableOffset];
+        targetFunc = (void*) vtable[vtableOffset];
+
+        uintptr_t otherPage = (uintptr_t) vtable & ~(uintptr_t) 4095;
+        int err = mprotect((void*) otherPage, 8196, PROT_READ | PROT_WRITE);
+        if(err){
+            LOG("Failed to set memory protection %d-%s", err, strerror(errno));
+        }
+        else {
+            //LOG("%s", "Setting vtable value");
+            vtable[vtableOffset] = (void*) detourFunction;
+            //LOG("%s", "Resetting permissions vtable value");
+            mprotect((void*) otherPage, 8196, PROT_READ | PROT_EXEC);
+        }
+
+
+		LOG("Enabled Linux hook for %s", name.c_str());
+		enabled = true;
+		return true;
+	}
+#else
+    template<typename T>
+	bool CreateHookInObjectVTable(void *object, int vtableOffset, T* detourFunction)
+	{
+		// For virtual objects, VC++ (and from what I can tell gcc)  adds a pointer to the vtable as the first member.
 		// To access the vtable, we simply dereference the object.
 		void **vtable = *((void ***)object);
 
@@ -59,14 +100,19 @@ public:
 		enabled = true;
 		return true;
 	}
+#endif
 
 	void Destroy()
 	{
+#if  !defined(_WIN32) && !defined(_WIN64)
+        // should probably do something, but meh.
+#else
 		if (enabled)
 		{
 			MH_RemoveHook(targetFunc);
 			enabled = false;
 		}
+#endif
 	}
 
 private:

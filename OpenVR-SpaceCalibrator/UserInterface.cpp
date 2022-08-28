@@ -8,7 +8,7 @@
 #include <string>
 #include <vector>
 #include <algorithm>
-#include <imgui/imgui.h>
+#include "../lib/imgui/imgui.h"
 
 struct VRDevice
 {
@@ -67,14 +67,14 @@ void BuildMenu(bool runningInOverlay)
 {
 	auto &io = ImGui::GetIO();
 	ImGuiStyle &style = ImGui::GetStyle();
-	ImGui::Text("");
+	ImGui::Text("%s", "");
 
 	if (CalCtx.state == CalibrationState::None)
 	{
 		if (CalCtx.validProfile && !CalCtx.enabled)
 		{
 			ImGui::TextColored(ImColor(0.8f, 0.2f, 0.2f), "Reference (%s) HMD not detected, profile disabled", CalCtx.referenceTrackingSystem.c_str());
-			ImGui::Text("");
+            ImGui::Text("%s", "");
 		}
 
 		float width = ImGui::GetWindowContentRegionWidth(), scale = 1.0f;
@@ -114,7 +114,7 @@ void BuildMenu(bool runningInOverlay)
 			scale = 0.5;
 		}
 
-		ImGui::Text("");
+        ImGui::Text("%s", "");
 		if (ImGui::Button("Copy Chaperone Bounds to profile", ImVec2(width * scale, ImGui::GetTextLineHeight() * 2)))
 		{
 			LoadChaperoneBounds();
@@ -135,7 +135,7 @@ void BuildMenu(bool runningInOverlay)
 			}
 		}
 
-		ImGui::Text("");
+        ImGui::Text("%s", "");
 		auto speed = CalCtx.calibrationSpeed;
 
 		ImGui::Columns(4, NULL, false);
@@ -194,7 +194,7 @@ void BuildMenu(bool runningInOverlay)
 				break;
 			case CalibrationContext::Message::Progress:
 				float fraction = (float)message.progress / (float)message.target;
-				ImGui::Text("");
+				ImGui::Text("%s", "");
 				ImGui::ProgressBar(fraction, ImVec2(-1.0f, 0.0f), "");
 				ImGui::SetCursorPosY(ImGui::GetCursorPosY() - ImGui::GetFontSize() - style.FramePadding.y * 2);
 				ImGui::Text(" %d%%", (int)(fraction * 100));
@@ -205,7 +205,7 @@ void BuildMenu(bool runningInOverlay)
 
 		if (CalCtx.state == CalibrationState::None)
 		{
-			ImGui::Text("");
+            ImGui::Text("%s", "");
 			if (ImGui::Button("Close", ImVec2(ImGui::GetWindowContentRegionWidth(), ImGui::GetTextLineHeight() * 2)))
 				ImGui::CloseCurrentPopup();
 		}
@@ -279,7 +279,7 @@ void BuildSystemSelection(const VRState &state)
 	ImGui::SameLine();
 	ImGui::Combo("##TargetTrackingSystem", &currentTargetSystem, &targetSystems[0], (int) targetSystems.size());
 
-	if (currentTargetSystem != -1 && currentTargetSystem < targetSystems.size())
+	if (currentTargetSystem != -1 && currentTargetSystem < (int) targetSystems.size())
 	{
 		CalCtx.targetTrackingSystem = std::string(targetSystems[currentTargetSystem]);
 	}
