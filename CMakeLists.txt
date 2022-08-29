@@ -31,7 +31,7 @@ add_library(gl3w modules/gl3w/build/src/gl3w.c)
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
-add_executable(SpaceCalibrator 
+add_executable(OpenVR-SpaceCalibrator 
     OpenVR-SpaceCalibrator/OpenVR-SpaceCalibrator.cpp
     OpenVR-SpaceCalibrator/Calibration.cpp
     OpenVR-SpaceCalibrator/Configuration.cpp
@@ -43,7 +43,7 @@ add_executable(SpaceCalibrator
     ./OpenVR-SpaceCalibratorDriver/compat.cpp
     ./OpenVR-SpaceCalibratorDriver/Logging.cpp
 )
-TARGET_LINK_LIBRARIES(SpaceCalibrator PRIVATE openvr_api imgui gl3w GL glfw)
+TARGET_LINK_LIBRARIES(OpenVR-SpaceCalibrator PRIVATE openvr_api imgui gl3w GL glfw)
 
 add_library(
     driver_01spacecalibrator
@@ -62,3 +62,5 @@ set_target_properties(driver_01spacecalibrator PROPERTIES
     OUTPUT_NAME driver_01spacecalibrator
     PREFIX ""
 )
+
+configure_file( ./OpenVR-SpaceCalibrator/manifest.vrmanifest manifest.vrmanifest )
