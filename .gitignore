@@ -16,3 +16,4 @@ ipch
 *.out
 OpenVR-SpaceCalibratorDriver/01spacecalibrator/bin/linux64/
 build
+*.gitignore
