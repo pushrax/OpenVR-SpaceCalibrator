@@ -1,6 +1,6 @@
 #pragma once
 
-#if  !defined(_WIN32) && !defined(_WIN64)
+#ifdef __linux__
 #include "compat.h"
 #include "Comms.h"
 #else
@@ -20,7 +20,7 @@ public:
 	protocol::Response Receive();
 
 private:
-#if  !defined(_WIN32) && !defined(_WIN64)
+#ifdef __linux__
     Client<protocol::Request, protocol::Response> pipe;
 #else
     HANDLE pipe = INVALID_HANDLE_VALUE;

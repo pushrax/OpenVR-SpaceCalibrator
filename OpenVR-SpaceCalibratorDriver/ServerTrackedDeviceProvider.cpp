@@ -4,20 +4,6 @@
 #include <cstdlib>
 #include <cstring>
 
-#if  !defined(_WIN32) && !defined(_WIN64)
-#include <unistd.h>
-static void loopBreak(){
-    volatile bool loop = true;
-    int pid = getpid();
-    LOG("PID %d", pid);
-    while(loop){
-        usleep(1000 * 1000);
-    }
-}
-#endif
-
-
-
 vr::EVRInitError ServerTrackedDeviceProvider::Init(vr::IVRDriverContext *pDriverContext)
 {
 

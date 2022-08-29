@@ -4,7 +4,7 @@
 
 #include <string>
 
-#if  !defined(_WIN32) && !defined(_WIN64)
+#ifdef __linux__
 // NOP
 #else
 static std::string LastErrorString(DWORD lastError)
@@ -23,7 +23,7 @@ static std::string LastErrorString(DWORD lastError)
 
 IPCClient::~IPCClient()
 {
-#if  !defined(_WIN32) && !defined(_WIN64)
+#ifdef __linux__
     //NOP
 #else
 	if (pipe && pipe != INVALID_HANDLE_VALUE)
@@ -33,7 +33,7 @@ IPCClient::~IPCClient()
 
 void IPCClient::Connect()
 {
-#if  !defined(_WIN32) && !defined(_WIN64)
+#ifdef __linux__
 #else
 	LPTSTR pipeName = TEXT(OPENVR_SPACECALIBRATOR_PIPE_NAME);
 
@@ -72,7 +72,7 @@ protocol::Response IPCClient::SendBlocking(const protocol::Request &request)
 
 void IPCClient::Send(const protocol::Request &request)
 {
-#if  !defined(_WIN32) && !defined(_WIN64)
+#ifdef __linux__
     pipe.Send(request);
 #else
 	DWORD bytesWritten;
@@ -87,7 +87,7 @@ void IPCClient::Send(const protocol::Request &request)
 protocol::Response IPCClient::Receive()
 {
 	protocol::Response response(protocol::ResponseInvalid);
-#if  !defined(_WIN32) && !defined(_WIN64)
+#ifdef __linux__
     pipe.Recv(&response);
     return response;
 #else

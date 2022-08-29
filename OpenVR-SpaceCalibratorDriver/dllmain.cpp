@@ -1,7 +1,7 @@
 #include "Logging.h"
 #include "../Version.h"
 
-#if  !defined(_WIN32) && !defined(_WIN64)
+#ifdef __linux__
 #include <unistd.h>
 
 __attribute__((constructor)) 

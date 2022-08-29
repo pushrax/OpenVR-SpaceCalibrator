@@ -142,7 +142,7 @@ static void WriteProfile(CalibrationContext &ctx, std::ostream &out)
 	out << profilesV.serialize(true);
 }
 
-#if  !defined(_WIN32) && !defined(_WIN64)
+#ifdef __linux__
 // NOP
 #else
 static const char *RegistryKey = "Software\\OpenVR-SpaceCalibrator";
@@ -156,7 +156,7 @@ static void LogRegistryResult(LSTATUS result)
 
 static std::string ReadRegistryKey()
 {
-#if  !defined(_WIN32) && !defined(_WIN64)
+#ifdef __linux__
     FILE* file = fopen(LINUX_CONFIG_FILE, "r");
     if(!file) return "";
 
@@ -200,7 +200,7 @@ static std::string ReadRegistryKey()
 
 static void WriteRegistryKey(std::string str)
 {
-#if  !defined(_WIN32) && !defined(_WIN64)
+#ifdef __linux__
     FILE* file = fopen(LINUX_CONFIG_FILE, "w");
     if(!file) std::cerr << "Error opening config file for writing";
 

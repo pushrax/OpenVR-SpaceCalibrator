@@ -9,7 +9,7 @@
 #include <locale>
 #include <GL/gl3w.h>
 
-#if  !defined(_WIN32) && !defined(_WIN64)
+#ifdef __linux__
 #include <unistd.h>
 #else
 #include <direct.h>
@@ -23,7 +23,7 @@
 #include <GLFW/glfw3.h>
 #include <openvr.h>
 
-#if  !defined(_WIN32) && !defined(_WIN64)
+#ifdef __linux__
 //NOP
 #else
 #pragma comment(linker,"\"/manifestdependency:type='win32' \
@@ -33,13 +33,13 @@ processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 
 #define OPENVR_APPLICATION_KEY "pushrax.SpaceCalibrator"
 
-#if  !defined(_WIN32) && !defined(_WIN64)
+#ifdef __linux__
 #else
 extern "C" __declspec(dllexport) DWORD NvOptimusEnablement = 0x00000001;
 extern "C" __declspec(dllexport) DWORD AmdPowerXpressRequestHighPerformance = 0x00000001;
 #endif
 
-#if  !defined(_WIN32) && !defined(_WIN64)
+#ifdef __linux__
 #define MANIFEST_END_PATH "/manifest.vrmanifest"
 #else
 #define MANIFEST_END_PATH "\\manifest.vrmanifest"
@@ -72,7 +72,7 @@ void openGLDebugCallback(GLenum /* source */, GLenum /* type */, GLuint id, GLen
 {
 	fprintf(stderr, "OpenGL Debug %u: %.*s\n", id, length, message);
 }
-#if  !defined(_WIN32) && !defined(_WIN64)
+#ifdef __linux__
 static void HandleCommandLine(wchar_t const * lpCmdLine);
 #else
 static void HandleCommandLine(LPWSTR lpCmdLine);
@@ -381,7 +381,7 @@ std::wstring to_wstring(std::string str)
     return strconverter.from_bytes(str);
 }
 
-#if  !defined(_WIN32) && !defined(_WIN64)
+#ifdef __linux__
 int main(int argc, char ** argv)
 {
     wchar_t const * lpCmdLine;
@@ -447,13 +447,13 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 	glfwTerminate();
 	return 0;
 }
-#if  !defined(_WIN32) && !defined(_WIN64)
+#ifdef __linux__
 bool StringMatch(wchar_t const * first, wchar_t const * second) {
 #else
 bool StringMatch(LPWSTR first, LPWSTR second) {
 #endif
     bool ret;
-#if  !defined(_WIN32) && !defined(_WIN64)
+#ifdef __linux__
 	ret =  wcscmp(first, second) == 0;
 #else
 	ret =  lstrcmp(first, second) == 0;
@@ -461,7 +461,7 @@ bool StringMatch(LPWSTR first, LPWSTR second) {
     return ret;
 }
 
-#if  !defined(_WIN32) && !defined(_WIN64)
+#ifdef __linux__
 static void HandleCommandLine(wchar_t const * lpCmdLine)
 #else
 static void HandleCommandLine(LPWSTR lpCmdLine)

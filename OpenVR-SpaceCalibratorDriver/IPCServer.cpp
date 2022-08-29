@@ -2,7 +2,7 @@
 #include "Logging.h"
 #include "ServerTrackedDeviceProvider.h"
 
-#if  !defined(_WIN32) && !defined(_WIN64)
+#ifdef __linux__
 #include "Comms.h"
 #else
 
@@ -46,7 +46,7 @@ void IPCServer::Stop()
 		return;
 	stop = true;
 
-#if  !defined(_WIN32) && !defined(_WIN64)
+#ifdef __linux__
     //NOP
 #else
 	SetEvent(connectEvent);
@@ -55,7 +55,7 @@ void IPCServer::Stop()
 	TRACE("IPCServer::Stop() finished");
 #endif
 }
-#if  !defined(_WIN32) && !defined(_WIN64)
+#ifdef __linux__
     //NOP
 #else
 IPCServer::PipeInstance *IPCServer::CreatePipeInstance(HANDLE pipe)
@@ -78,7 +78,7 @@ void IPCServer::ClosePipeInstance(PipeInstance *pipeInst)
 
 void IPCServer::RunThread(IPCServer *_this)
 {
-#if  !defined(_WIN32) && !defined(_WIN64)
+#ifdef __linux__
     Comms<protocol::Response, protocol::Request> comms;
 
     protocol::Response response;
@@ -155,7 +155,7 @@ void IPCServer::RunThread(IPCServer *_this)
 #endif
 }
 
-#if  !defined(_WIN32) && !defined(_WIN64)
+#ifdef __linux__
 //NOP
 #else
 BOOL IPCServer::CreateAndConnectInstance(LPOVERLAPPED overlap, HANDLE &pipe)

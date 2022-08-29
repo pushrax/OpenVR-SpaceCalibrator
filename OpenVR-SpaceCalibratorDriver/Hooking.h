@@ -2,7 +2,7 @@
 
 #include "Logging.h"
 
-#if  !defined(_WIN32) && !defined(_WIN64)
+#ifdef __linux__
 #include <unistd.h>
 #include "string.h"
 #include <sys/mman.h>
@@ -39,7 +39,7 @@ public:
 	FuncType originalFunc = nullptr;
 	Hook(const std::string &name) : IHook(name) { }
 
-#if  !defined(_WIN32) && !defined(_WIN64)
+#ifdef __linux__
     template<typename T>
 	bool CreateHookInObjectVTable(void *object, int vtableOffset, T* detourFunction)
 	{
@@ -104,7 +104,7 @@ public:
 
 	void Destroy()
 	{
-#if  !defined(_WIN32) && !defined(_WIN64)
+#ifdef __linux__
         // should probably do something, but meh.
 #else
 		if (enabled)

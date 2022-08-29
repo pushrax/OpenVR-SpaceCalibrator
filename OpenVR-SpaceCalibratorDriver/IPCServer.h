@@ -7,7 +7,7 @@
 #include <set>
 #include <mutex>
 
-#if  !defined(_WIN32) && !defined(_WIN64)
+#ifdef __linux__
 //NOP: linux isn't windows
 #else
 #define WIN32_LEAN_AND_MEAN
@@ -28,7 +28,7 @@ public:
 private:
 	void HandleRequest(const protocol::Request &request, protocol::Response &response);
 
-#if  !defined(_WIN32) && !defined(_WIN64)
+#ifdef __linux__
     //NOP: Not used in Linux build
 #else
 	struct PipeInstance

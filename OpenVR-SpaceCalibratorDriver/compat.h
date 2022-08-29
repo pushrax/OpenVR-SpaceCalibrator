@@ -1,6 +1,6 @@
 #pragma once
 
-#if  !defined(_WIN32) && !defined(_WIN64)
+#ifdef __linux__
 
 #include <cstdint>
 

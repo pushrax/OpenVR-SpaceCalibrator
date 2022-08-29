@@ -4,7 +4,7 @@
 
 #include "Hooking.h"
 
-#if  !defined(_WIN32) && !defined(_WIN64)
+#ifdef __linux__
 #include "compat.h"
 #endif
 
