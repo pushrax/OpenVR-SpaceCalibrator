@@ -6,7 +6,7 @@ std::unordered_map<void*, void*> functionMap;
 
 
 void MessageBox(void *, wchar_t const * msg, wchar_t const *  title, int /* trash */ ){
-    std::cerr << "Messagebox: " << title << ": " << msg << std::endl;
+    std::wcerr << "Messagebox: " << title << ": " << msg << std::endl;
 }
 
 /*

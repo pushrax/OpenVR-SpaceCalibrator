@@ -39,6 +39,13 @@ extern "C" __declspec(dllexport) DWORD NvOptimusEnablement = 0x00000001;
 extern "C" __declspec(dllexport) DWORD AmdPowerXpressRequestHighPerformance = 0x00000001;
 #endif
 
+#if  !defined(_WIN32) && !defined(_WIN64)
+#define MANIFEST_END_PATH "/manifest.vrmanifest"
+#else
+#define MANIFEST_END_PATH "\\manifest.vrmanifest"
+#endif
+
+
 //#define DEBUG_LOGS
 #ifdef DEBUG_LOGS
 void CreateConsole()
@@ -376,12 +383,7 @@ std::wstring to_wstring(std::string str)
 
 #if  !defined(_WIN32) && !defined(_WIN64)
 int main(int argc, char ** argv)
-#else
-int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPWSTR lpCmdLine, _In_ int nCmdShow)
-#endif
 {
-
-#if  !defined(_WIN32) && !defined(_WIN64)
     wchar_t const * lpCmdLine;
     std::wstring wide;
     for(int i=1; i<argc; i++){
@@ -393,6 +395,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
         return 1;
     }
 #else
+int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPWSTR lpCmdLine, _In_ int nCmdShow)
+{
 	_getcwd(cwd, MAX_PATH);
 #endif
 
@@ -463,7 +467,17 @@ static void HandleCommandLine(wchar_t const * lpCmdLine)
 static void HandleCommandLine(LPWSTR lpCmdLine)
 #endif
 {
-	if (StringMatch(lpCmdLine, L"-openvrpath"))
+	if (StringMatch(lpCmdLine, L"-help") || StringMatch(lpCmdLine, L"-h"))
+    {
+        std::cout << "usage - OpenVR SpaceCalibrator, only pick one option" << std::endl;
+        std::cout << "-openvrpath                  print runtime path of openvr" << std::endl;
+        std::cout << "-installmanifest             install the application vrmanifest" << std::endl;
+        std::cout << "-removemanifest              remove the application vrmanifest" << std::endl;
+        std::cout << "-activatemultipledrivers     enable multiple drivers in steamvr" << std::endl;
+        std::cout << "-help -h                     print this message" << std::endl;
+        exit(0);
+    }
+	else if (StringMatch(lpCmdLine, L"-openvrpath"))
 	{
 		auto vrErr = vr::VRInitError_None;
 		vr::VR_Init(&vrErr, vr::VRApplication_Utility);
@@ -499,13 +513,13 @@ static void HandleCommandLine(LPWSTR lpCmdLine)
 				else
 				{
 					std::string manifestPath = oldWd;
-					manifestPath += "\\manifest.vrmanifest";
+					manifestPath += MANIFEST_END_PATH;
 					std::cout << "Removing old manifest path: " << manifestPath << std::endl;
 					vr::VRApplications()->RemoveApplicationManifest(manifestPath.c_str());
 				}
 			}
 			std::string manifestPath = cwd;
-			manifestPath += "\\manifest.vrmanifest";
+			manifestPath += MANIFEST_END_PATH;
 			std::cout << "Adding manifest path: " << manifestPath << std::endl;
 			auto vrAppErr = vr::VRApplications()->AddApplicationManifest(manifestPath.c_str());
 			if (vrAppErr != vr::VRApplicationError_None)
@@ -532,7 +546,7 @@ static void HandleCommandLine(LPWSTR lpCmdLine)
 			if (vr::VRApplications()->IsApplicationInstalled(OPENVR_APPLICATION_KEY))
 			{
 				std::string manifestPath = cwd;
-				manifestPath += "\\manifest.vrmanifest";
+				manifestPath += MANIFEST_END_PATH;
 				std::cout << "Removing manifest path: " << manifestPath << std::endl;
 				vr::VRApplications()->RemoveApplicationManifest(manifestPath.c_str());
 			}
