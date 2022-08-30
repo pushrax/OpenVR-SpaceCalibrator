@@ -64,3 +64,4 @@ set_target_properties(driver_01spacecalibrator PROPERTIES
 )
 
 configure_file( ./OpenVR-SpaceCalibrator/manifest.vrmanifest manifest.vrmanifest )
+configure_file( ./OpenVR-SpaceCalibratorDriver/01spacecalibrator/driver.vrdrivermanifest driver.vrdrivermanifest )

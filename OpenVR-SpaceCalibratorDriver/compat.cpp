@@ -32,12 +32,12 @@ void MH_Uninitialize()
 {
 }
 
-void MH_RemoveHook(void* thing){
+void MH_RemoveHook(void* /* thing */){
 }
-int MH_EnableHook(void* thing){
+int MH_EnableHook(void* /* thing */){
     return 1;
 }
-int MH_CreateHook(void* a, void* b, LPVOID* fun){
+int MH_CreateHook(void* /* a */, void* /* b */, LPVOID* /* fun */){
     return 1;
 }
 
