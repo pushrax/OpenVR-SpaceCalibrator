@@ -22,9 +22,8 @@ include_directories(/usr/include/openvr)
 include_directories(lib/gl3w/include)
 include_directories(lib)
 include_directories(modules/openvr/headers)
-include_directories(modules/glfw/include)
 
-add_library(gl3w modules/gl3w/build/src/gl3w.c)
+add_library(gl3w lib/gl3w/src/gl3w.c)
 
 #configure_file(LinixConfig.h.in LinuxConfig.h)
 
