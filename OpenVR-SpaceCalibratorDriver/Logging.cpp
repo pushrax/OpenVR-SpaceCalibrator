@@ -3,11 +3,18 @@
 #include <chrono>
 #include <ctime>
 
+#ifdef  __linux__
+#include "StaticConfig.h"
+#else
+#define DRIVER_LOG_FILE "space_calibrator_driver.log"
+#endif
+
+
 FILE *LogFile;
 
 void OpenLogFile()
 {
-	LogFile = fopen("/tmp/space_calibrator_driver.log", "w");
+	LogFile = fopen(DRIVER_LOG_FILE, "w");
 	if (LogFile == nullptr)
 	{
 		LogFile = stderr;

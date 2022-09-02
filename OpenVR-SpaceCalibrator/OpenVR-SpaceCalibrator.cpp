@@ -7,7 +7,7 @@
 #include <string>
 #include <codecvt>
 #include <locale>
-#include <GL/gl3w.h>
+#include "GL/gl3w.h"
 
 #ifdef __linux__
 #include <unistd.h>
@@ -24,7 +24,7 @@
 #include <openvr.h>
 
 #ifdef __linux__
-//NOP
+#include "StaticConfig.h"
 #else
 #pragma comment(linker,"\"/manifestdependency:type='win32' \
 name='Microsoft.Windows.Common-Controls' version='6.0.0.0' \
@@ -40,9 +40,9 @@ extern "C" __declspec(dllexport) DWORD AmdPowerXpressRequestHighPerformance = 0x
 #endif
 
 #ifdef __linux__
-#define MANIFEST_END_PATH "/manifest.vrmanifest"
+#define MANIFEST_PATH(CWD)  (APP_MANIFEST_PATH)
 #else
-#define MANIFEST_END_PATH "\\manifest.vrmanifest"
+#define MANIFEST_PATH(CWD) (CWD + "\\manifest.vrmanifest")
 #endif
 
 
@@ -474,6 +474,10 @@ static void HandleCommandLine(LPWSTR lpCmdLine)
         std::cout << "-installmanifest             install the application vrmanifest" << std::endl;
         std::cout << "-removemanifest              remove the application vrmanifest" << std::endl;
         std::cout << "-activatemultipledrivers     enable multiple drivers in steamvr" << std::endl;
+#ifdef __linux__
+        std::cout << "-installdriver               install the steam vr driver." << std::endl;
+        std::cout << "-uninstalldriver             uninstall the steam vr driver." << std::endl;
+#endif
         std::cout << "-help -h                     print this message" << std::endl;
         exit(0);
     }
@@ -513,13 +517,14 @@ static void HandleCommandLine(LPWSTR lpCmdLine)
 				else
 				{
 					std::string manifestPath = oldWd;
-					manifestPath += MANIFEST_END_PATH;
+					manifestPath = MANIFEST_PATH(manifestPath);
 					std::cout << "Removing old manifest path: " << manifestPath << std::endl;
 					vr::VRApplications()->RemoveApplicationManifest(manifestPath.c_str());
 				}
 			}
 			std::string manifestPath = cwd;
-			manifestPath += MANIFEST_END_PATH;
+            manifestPath = MANIFEST_PATH(manifestPath);
+
 			std::cout << "Adding manifest path: " << manifestPath << std::endl;
 			auto vrAppErr = vr::VRApplications()->AddApplicationManifest(manifestPath.c_str());
 			if (vrAppErr != vr::VRApplicationError_None)
@@ -545,8 +550,9 @@ static void HandleCommandLine(LPWSTR lpCmdLine)
 		{
 			if (vr::VRApplications()->IsApplicationInstalled(OPENVR_APPLICATION_KEY))
 			{
-				std::string manifestPath = cwd;
-				manifestPath += MANIFEST_END_PATH;
+                std::string manifestPath = cwd;
+                manifestPath = MANIFEST_PATH(manifestPath);
+
 				std::cout << "Removing manifest path: " << manifestPath << std::endl;
 				vr::VRApplications()->RemoveApplicationManifest(manifestPath.c_str());
 			}
@@ -581,4 +587,56 @@ static void HandleCommandLine(LPWSTR lpCmdLine)
 		vr::VR_Shutdown();
 		exit(ret);
 	}
+#ifdef __linux__
+	else if (StringMatch(lpCmdLine, L"-installdriver"))
+	{
+		auto vrErr = vr::VRInitError_None;
+		vr::VR_Init(&vrErr, vr::VRApplication_Utility);
+		if (vrErr != vr::VRInitError_None)
+		{
+            fprintf(stderr, "Failed to initialize OpenVR: %s\n", vr::VR_GetVRInitErrorAsEnglishDescription(vrErr));
+            vr::VR_Shutdown();
+            exit(-2);
+        }
+
+        char cruntimePath[MAX_PATH] = { 0 };
+        unsigned int pathLen;
+        vr::VR_GetRuntimePath(cruntimePath, MAX_PATH, &pathLen);
+
+        const int cmdLength = 8196;
+        char cmd[cmdLength];
+
+        snprintf(cmd, cmdLength, "python " DRIVER_INSTALLER_PATH "/driverInstall.py --toInstall " DRIVER_MANIFEST_PATH " --vrpathreg %s/bin/vrpathreg.sh", cruntimePath);
+        printf("cmd: %s\n", cmd);
+        system(cmd);
+
+        vr::VR_Shutdown();
+        exit(0);
+	}
+	else if (StringMatch(lpCmdLine, L"-uninstalldriver"))
+	{
+		auto vrErr = vr::VRInitError_None;
+		vr::VR_Init(&vrErr, vr::VRApplication_Utility);
+		if (vrErr != vr::VRInitError_None)
+		{
+            fprintf(stderr, "Failed to initialize OpenVR: %s\n", vr::VR_GetVRInitErrorAsEnglishDescription(vrErr));
+            vr::VR_Shutdown();
+            exit(-2);
+        }
+
+        char cruntimePath[MAX_PATH] = { 0 };
+        unsigned int pathLen;
+        vr::VR_GetRuntimePath(cruntimePath, MAX_PATH, &pathLen);
+
+        const int cmdLength = 8196;
+        char cmd[cmdLength];
+
+        snprintf(cmd, cmdLength,  "\"%s/bin/vrpathreg.sh\" removedriverwithname 01spacecalibrator", cruntimePath);
+        printf("cmd: %s\n", cmd);
+
+        vr::VR_Shutdown();
+        exit(0);
+	}
+#endif
+
 }

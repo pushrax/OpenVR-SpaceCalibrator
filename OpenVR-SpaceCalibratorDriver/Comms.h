@@ -33,13 +33,13 @@ class UDPServerSocket{
             //TODO verify that 0 is valid for UDP.
             sock = socket(AF_INET, SOCK_DGRAM, 0);
             if(sock == -1){
-                LOG("%s", "Failed to create socket");
+                LOG("Failed to create socket: %s", strerror(errno));
                 return false;
             }
 
             int err = bind(sock, (sockaddr*)&my_addr, sizeof(my_addr));
             if(err){
-                LOG("%s", "Failed to bind socket");
+                LOG("Failed to bind socket: %s", strerror(errno));
                 return false;
             }
             return true;
