@@ -190,7 +190,7 @@ void BuildMenu(bool runningInOverlay)
 			switch (message.type)
 			{
 			case CalibrationContext::Message::String:
-				ImGui::TextWrapped(message.str.c_str());
+				ImGui::TextWrapped("%s", message.str.c_str());
 				break;
 			case CalibrationContext::Message::Progress:
 				float fraction = (float)message.progress / (float)message.target;

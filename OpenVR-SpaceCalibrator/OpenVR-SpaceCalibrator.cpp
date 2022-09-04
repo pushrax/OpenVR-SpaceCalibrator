@@ -288,7 +288,11 @@ void RunLoop()
 				switch (vrEvent.eventType) {
 				case vr::VREvent_MouseMove:
 					io.MousePos.x = vrEvent.data.mouse.x;
+#ifdef __linux__
+					io.MousePos.y = height - vrEvent.data.mouse.y;
+#else
 					io.MousePos.y = vrEvent.data.mouse.y;
+#endif
 					break;
 				case vr::VREvent_MouseButtonDown:
 					io.MouseDown[vrEvent.data.mouse.button == vr::VRMouseButton_Left ? 0 : 1] = true;
@@ -449,17 +453,17 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 }
 #ifdef __linux__
 bool StringMatch(wchar_t const * first, wchar_t const * second) {
-#else
-bool StringMatch(LPWSTR first, LPWSTR second) {
-#endif
     bool ret;
-#ifdef __linux__
 	ret =  wcscmp(first, second) == 0;
-#else
-	ret =  lstrcmp(first, second) == 0;
-#endif
     return ret;
 }
+#else
+bool StringMatch(LPWSTR first, LPWSTR second) {
+    bool ret;
+	ret =  lstrcmp(first, second) == 0;
+    return ret;
+}
+#endif
 
 #ifdef __linux__
 static void HandleCommandLine(wchar_t const * lpCmdLine)
