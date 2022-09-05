@@ -23,7 +23,7 @@ class UDPServerSocket{
         UDPServerSocket(){}
 
 
-        bool Open(unsigned short port){
+        bool Open(unsigned short port, int timeout=0){
             sockaddr_in my_addr = {};
 
             my_addr.sin_family = AF_INET;
@@ -32,9 +32,18 @@ class UDPServerSocket{
 
             //TODO verify that 0 is valid for UDP.
             sock = socket(AF_INET, SOCK_DGRAM, 0);
+
             if(sock == -1){
                 LOG("Failed to create socket: %s", strerror(errno));
                 return false;
+            }
+
+
+            if(timeout > 0){
+                struct timeval tv;
+                tv.tv_sec = timeout / 1000;
+                tv.tv_usec = (timeout % 1000) * 1000;
+                setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (const char *)&tv, sizeof(tv));
             }
 
             int err = bind(sock, (sockaddr*)&my_addr, sizeof(my_addr));
@@ -84,12 +93,11 @@ class Comms{
         }
 
         void Recv(RecvObj* obj){
-            while(true){
-                if(sock.Recv(obj, (sockaddr*) &lastClient, &peer_addr_len)){
-                    return;
-                } else {
-                    LOG("%s", "failed to recve value");
-                }
+            if(sock.Recv(obj, (sockaddr*) &lastClient, &peer_addr_len)){
+                return;
+            } else {
+                LOG("%s", "failed to recve value");
+                return;
             }
         }
 
@@ -110,7 +118,7 @@ class Client{
         Client& operator=(const Client& other) = delete;
 
         Client(){
-            if( !sock.Open(COMM_PORT_CLIENT) ){
+            if( !sock.Open(COMM_PORT_CLIENT, 1000) ){
                 LOG("%s", "Error opening server socket");
             }
 
@@ -119,18 +127,17 @@ class Client{
             serverAddr.sin_addr.s_addr = INADDR_ANY;
         }
 
-        void Recv(RecvObj* obj){
-            while(true){
-                sockaddr_in lastClient;
-                lastClient.sin_family = AF_INET;
-                lastClient.sin_port = htons(COMM_PORT_SERVER);
-                lastClient.sin_addr.s_addr = INADDR_ANY;
- 
-                if(sock.Recv(obj, (sockaddr*) &lastClient, &peer_addr_len)){
-                    return;
-                } else {
-                    LOG("%s", "failed to recve value");
-                }
+        bool Recv(RecvObj* obj){
+            sockaddr_in lastClient;
+            lastClient.sin_family = AF_INET;
+            lastClient.sin_port = htons(COMM_PORT_SERVER);
+            lastClient.sin_addr.s_addr = INADDR_ANY;
+
+            if(sock.Recv(obj, (sockaddr*) &lastClient, &peer_addr_len)){
+                return true;
+            } else {
+                LOG("%s", "failed to recve value");
+                return false;
             }
         }
 

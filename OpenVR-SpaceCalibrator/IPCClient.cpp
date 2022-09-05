@@ -66,8 +66,20 @@ void IPCClient::Connect()
 
 protocol::Response IPCClient::SendBlocking(const protocol::Request &request)
 {
-	Send(request);
-	return Receive();
+#ifdef __linux__
+    for(int i=0; i<10; i++){
+        Send(request);
+        try{
+            return Receive();
+        } catch (std::runtime_error &t) {
+            LOG("%s: %s", "Recv timeout failed", t.what());
+        }
+    }
+    throw std::runtime_error("Fell through read loop");
+#else
+    Send(request);
+    return Receive();
+#endif
 }
 
 void IPCClient::Send(const protocol::Request &request)
@@ -88,8 +100,10 @@ protocol::Response IPCClient::Receive()
 {
 	protocol::Response response(protocol::ResponseInvalid);
 #ifdef __linux__
-    pipe.Recv(&response);
-    return response;
+    if( pipe.Recv(&response) )
+        return response;
+    else
+		throw std::runtime_error("No packet was received");
 #else
 	DWORD bytesRead;
 
