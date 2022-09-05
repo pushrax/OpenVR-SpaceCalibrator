@@ -8,7 +8,7 @@
 #include <string>
 #include <vector>
 #include <algorithm>
-#include "../lib/imgui/imgui.h"
+#include "imgui/imgui.h"
 
 struct VRDevice
 {
