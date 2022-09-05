@@ -1,6 +1,8 @@
 #include "stdafx.h"
 #include "IPCClient.h"
+#ifdef __linux__
 #include "Comms.h"
+#endif
 
 #include <string>
 

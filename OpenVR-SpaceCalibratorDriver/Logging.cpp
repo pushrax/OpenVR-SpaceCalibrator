@@ -29,9 +29,15 @@ tm TimeForLog()
 
 	auto now = std::chrono::system_clock::now();
 	auto nowTime = std::chrono::system_clock::to_time_t(now);
+#ifdef __linux__
 	tm buf;
 	auto tm = localtime_r(&nowTime, &buf);
 	return *tm;
+#else
+	tm value;
+	auto tm = localtime_s(&value, &nowTime);
+	return value;
+#endif
 }
 
 
