@@ -42,14 +42,16 @@ As part of first time setup, or when you make a change to your space (e.g. move 
 
 You can calibrate without using the dashboard overlay by unminimizing Space Calibrator after opening SteamVR (it starts minimized). This is required if you're calibrating for a lone HMD without any devices in its tracking system.
 
-### Compiling your own build
+### Compiling your own Windows build
 
 Open `OpenVR-SpaceCalibrator.sln` in Visual Studio 2017 and build. There are no external dependencies.
 
-### Compiling on linux
+### Compiling on Linux
 Dependencies: eigen, openvr, python3, libgl
 
-Run the following from the main repo directory.
+Further dependencies will be downloaded as git submodules as part of the build process.
+
+Run the following from the main repo directory to build and install.
 
 ```
 mkdir build
@@ -60,6 +62,7 @@ make install
 ```
 
 The build prefix can be modified so that it points to an interanl directory for testing without installing.
+
 
 
 ### The math

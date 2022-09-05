@@ -15,6 +15,7 @@
 #include <unistd.h> 
 #include <string.h>
 #include <sys/stat.h>
+#include "StaticConfig.h"
 #define LINUX_CONFIG_FILE "spacecal-config.json"
 #endif
 
