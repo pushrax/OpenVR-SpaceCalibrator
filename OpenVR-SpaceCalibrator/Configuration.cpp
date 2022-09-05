@@ -9,6 +9,15 @@
 #include <iomanip>
 #include <limits>
 
+#include "Logging.h"
+
+#ifdef __linux__
+#include <unistd.h> 
+#include <string.h>
+#include <sys/stat.h>
+#define LINUX_CONFIG_FILE "spacecal-config.json"
+#endif
+
 static picojson::array FloatArray(const float *buf, int numFloats)
 {
 	picojson::array arr;
@@ -201,12 +210,44 @@ static std::string ReadRegistryKey()
 static void WriteRegistryKey(std::string str)
 {
 #ifdef __linux__
-    system("mkdir -p " LINUX_CONFIG_DIR);
-    FILE* file = fopen(LINUX_CONFIG_FILE, "w");
-    if(!file) std::cerr << "Error opening config file for writing";
+    struct stat statResult;
+
+    char configPath[1024];
+    const char * home = getenv("HOME");
+    snprintf( configPath, 1024, "%s/" LINUX_CONFIG_DIR, home);
+
+    if(stat(LINUX_CONFIG_DIR, &statResult)){
+        if(errno != 2){ // no idea why 2 is returned instead of the documented ENOTDIR
+            int rr = errno;
+            LOG("Error determining if %s is a directory: %s, %s", configPath, strerror(rr), strerror(2));
+            return;
+        } else {
+            int rr = errno;
+            LOG("The directory %s is confirmed to not exist %d-%s", configPath, rr, strerror(rr));
+            int retCode;
+
+            char cmd[1500];
+            snprintf(cmd, 1500, "mkdir -p %s", configPath);
+            LOG("Running: %s", cmd);
+            if( (retCode = system(cmd)) ){
+                LOG("Error %d making directory " LINUX_CONFIG_DIR, retCode);
+                return;
+            }
+        }
+    }
+
+    char configFilePath[2000];
+    snprintf(configFilePath, 2000, "%s/" LINUX_CONFIG_FILE, configPath);
+
+    FILE* file = fopen(configFilePath, "w");
+    if(!file) {
+        LOG("%s - %d-%s", "Error opening config file for writing", errno, strerror(errno));
+        return;
+    } else {
+        LOG("Opened file at %s to save settings", configFilePath);
+    }
 
     fprintf(file, "%s", str.c_str());
-
     fclose(file);
 #else
 	HKEY hkey;

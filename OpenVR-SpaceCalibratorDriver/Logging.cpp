@@ -14,7 +14,7 @@ FILE *LogFile;
 
 void OpenLogFile()
 {
-	LogFile = fopen(DRIVER_LOG_FILE, "w");
+	LogFile = fopen(DRIVER_LOG_FILE, "a");
 	if (LogFile == nullptr)
 	{
 		LogFile = stderr;
