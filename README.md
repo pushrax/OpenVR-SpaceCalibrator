@@ -46,6 +46,22 @@ You can calibrate without using the dashboard overlay by unminimizing Space Cali
 
 Open `OpenVR-SpaceCalibrator.sln` in Visual Studio 2017 and build. There are no external dependencies.
 
+### Compiling on linux
+Dependencies: eigen, openvr, python3, libgl
+
+Run the following from the main repo directory.
+
+```
+mkdir build
+cd build
+cmake ..
+make
+make install
+```
+
+The build prefix can be modified so that it points to an interanl directory for testing without installing.
+
+
 ### The math
 
 See [math.pdf](https://github.com/pushrax/OpenVR-SpaceCalibrator/blob/master/math.pdf) for details.
