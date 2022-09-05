@@ -5,6 +5,7 @@ add_definitions(-D__linux__)
 
 set(CMAKE_BUILD_TYPE Debug)
 set(DRIVER_LOG_FILE "/tmp/spaceCalDriverLog.txt" CACHE PATH "Driver Log Path" )
+set(LINUX_CONFIG_DIR, "~/.config/OpenVR-SpaceCalibrator" )
 
 add_library(imgui 
 	lib/imgui/imgui.cpp

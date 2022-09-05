@@ -201,6 +201,7 @@ static std::string ReadRegistryKey()
 static void WriteRegistryKey(std::string str)
 {
 #ifdef __linux__
+    system("mkdir -p " LINUX_CONFIG_DIR);
     FILE* file = fopen(LINUX_CONFIG_FILE, "w");
     if(!file) std::cerr << "Error opening config file for writing";
 
