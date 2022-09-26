@@ -5,6 +5,7 @@
 #include "UserInterface.h"
 
 #include <imgui/imgui.h>
+#include <imgui/imgui_internal.h>
 #include <imgui/imgui_impl_glfw.h>
 #include <imgui/imgui_impl_opengl3.h>
 #include <GL/gl3w.h>
@@ -202,6 +203,13 @@ void InitVR()
 	ActivateMultipleDrivers();
 }
 
+static char textBuf[0x400];
+
+static bool immediateRedraw;
+void RequestImmediateRedraw() {
+	immediateRedraw = true;
+}
+
 void RunLoop()
 {
 	while (!glfwWindowShouldClose(glfwWindow))
@@ -241,14 +249,18 @@ void RunLoop()
 			}
 			else if (io.WantTextInput && !keyboardOpen && !keyboardJustClosed)
 			{
-				char buf[0x400];
-				ImGui::GetActiveText(buf, sizeof buf);
-				buf[0x3ff] = 0;
+				int id = ImGui::GetActiveID();
+				auto textInfo = ImGui::GetInputTextState(id);
+
+				textBuf[0] = 0;
+				int len = WideCharToMultiByte(CP_ACP, 0, (LPCWCH)textInfo->TextW.Data, textInfo->TextW.Size, textBuf, sizeof(textBuf), NULL, NULL);
+				textBuf[min(len, sizeof(textBuf) - 1)] = 0;
+				
 				uint32_t unFlags = 0; // EKeyboardFlags 
 
 				vr::VROverlay()->ShowKeyboardForOverlay(
 					overlayMainHandle, vr::k_EGamepadTextInputModeNormal, vr::k_EGamepadTextInputLineModeSingleLine,
-					unFlags, "Space Calibrator Overlay", sizeof buf, buf, 0
+					unFlags, "Space Calibrator Overlay", sizeof textBuf, textBuf, 0
 				);
 				keyboardOpen = true;
 			}
@@ -258,23 +270,32 @@ void RunLoop()
 			{
 				switch (vrEvent.eventType) {
 				case vr::VREvent_MouseMove:
-					io.MousePos.x = vrEvent.data.mouse.x;
-					io.MousePos.y = vrEvent.data.mouse.y;
+					io.AddMousePosEvent(vrEvent.data.mouse.x, vrEvent.data.mouse.y);
 					break;
 				case vr::VREvent_MouseButtonDown:
-					io.MouseDown[vrEvent.data.mouse.button == vr::VRMouseButton_Left ? 0 : 1] = true;
+					io.AddMouseButtonEvent(vrEvent.data.mouse.button == vr::VRMouseButton_Left ? 0 : 1, true);
 					break;
 				case vr::VREvent_MouseButtonUp:
-					io.MouseDown[vrEvent.data.mouse.button == vr::VRMouseButton_Left ? 0 : 1] = false;
+					io.AddMouseButtonEvent(vrEvent.data.mouse.button == vr::VRMouseButton_Left ? 0 : 1, false);
 					break;
 				case vr::VREvent_ScrollDiscrete:
-					io.MouseWheelH += vrEvent.data.scroll.xdelta * 360.0f * 8.0f;
-					io.MouseWheel += vrEvent.data.scroll.ydelta * 360.0f * 8.0f;
+				{
+					float x = vrEvent.data.scroll.xdelta * 360.0f * 8.0f;
+					float y = vrEvent.data.scroll.ydelta * 360.0f * 8.0f;
+					io.AddMouseWheelEvent(x, y);
 					break;
+				}
 				case vr::VREvent_KeyboardDone: {
-					char buf[0x400];
-					vr::VROverlay()->GetKeyboardText(buf, sizeof buf);
-					ImGui::SetActiveText(buf, sizeof buf);
+					vr::VROverlay()->GetKeyboardText(textBuf, sizeof textBuf);
+
+					int id = ImGui::GetActiveID();
+					auto textInfo = ImGui::GetInputTextState(id);
+					int bufSize = MultiByteToWideChar(CP_ACP, 0, textBuf, -1, NULL, 0);
+					textInfo->TextW.resize(bufSize);
+					MultiByteToWideChar(CP_ACP, 0, textBuf, -1, (LPWSTR)textInfo->TextW.Data, bufSize);
+					textInfo->CurLenW = bufSize;
+					textInfo->CurLenA = WideCharToMultiByte(CP_UTF8, 0, (LPCWCH)textInfo->TextW.Data, textInfo->TextW.Size, NULL, 0, NULL, NULL);
+					
 					keyboardJustClosed = true;
 					break;
 				}
@@ -284,9 +305,14 @@ void RunLoop()
 			}
 		}
 
-		ImGui::GetIO().DisplaySize = ImVec2((float) fboTextureWidth, (float) fboTextureHeight);
+		auto &io = ImGui::GetIO();
+		io.DisplaySize = ImVec2((float) fboTextureWidth, (float) fboTextureHeight);
+		io.DisplayFramebufferScale = ImVec2(1.0f, 1.0f);
 
-		ImGui_ImplGlfw_SetReadMouseFromGlfw(!dashboardVisible);
+		io.ConfigFlags = io.ConfigFlags & ~ImGuiConfigFlags_NoMouseCursorChange;
+		if (dashboardVisible) {
+			io.ConfigFlags = io.ConfigFlags | ImGuiConfigFlags_NoMouseCursorChange;
+		}
 		ImGui_ImplOpenGL3_NewFrame();
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
@@ -334,6 +360,11 @@ void RunLoop()
 
 		if (dashboardVisible && waitEventsTimeout > dashboardInterval)
 			waitEventsTimeout = dashboardInterval;
+
+		if (immediateRedraw) {
+			waitEventsTimeout = 0;
+			immediateRedraw = false;
+		}
 
 		glfwWaitEventsTimeout(waitEventsTimeout);
 	}

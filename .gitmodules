@@ -1,0 +1,3 @@
+[submodule "lib/MinHook"]
+	path = lib/MinHook
+	url = https://github.com/bdunderscore/minhook.git
