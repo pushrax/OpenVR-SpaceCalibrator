@@ -112,6 +112,8 @@
     <ClCompile Include="..\lib\imgui\imgui_impl_opengl3.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="..\lib\imgui\imgui_tables.cpp" />
+    <ClCompile Include="..\lib\imgui\imgui_widgets.cpp" />
     <ClCompile Include="Calibration.cpp" />
     <ClCompile Include="Configuration.cpp" />
     <ClCompile Include="EmbeddedFiles.cpp">
