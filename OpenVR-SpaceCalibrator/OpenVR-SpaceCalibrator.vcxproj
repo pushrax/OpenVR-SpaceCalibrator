@@ -86,6 +86,8 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="..\lib\implot\implot.h" />
+    <ClInclude Include="..\lib\implot\implot_internal.h" />
     <ClInclude Include="..\Version.h" />
     <ClInclude Include="Calibration.h" />
     <ClInclude Include="Configuration.h" />
@@ -114,6 +116,9 @@
     </ClCompile>
     <ClCompile Include="..\lib\imgui\imgui_tables.cpp" />
     <ClCompile Include="..\lib\imgui\imgui_widgets.cpp" />
+    <ClCompile Include="..\lib\implot\implot.cpp" />
+    <ClCompile Include="..\lib\implot\implot_demo.cpp" />
+    <ClCompile Include="..\lib\implot\implot_items.cpp" />
     <ClCompile Include="Calibration.cpp" />
     <ClCompile Include="Configuration.cpp" />
     <ClCompile Include="EmbeddedFiles.cpp">

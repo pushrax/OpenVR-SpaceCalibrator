@@ -19,6 +19,9 @@
     <Filter Include="Source Files\GL">
       <UniqueIdentifier>{d156ae5c-9fe6-41f0-a34e-333dc7a6b2f8}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\ImGui\ImPlot">
+      <UniqueIdentifier>{7334a0fc-18cd-446d-b621-6dadb942fe6f}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="stdafx.h">
@@ -45,6 +48,12 @@
     <ClInclude Include="..\Version.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\lib\implot\implot.h">
+      <Filter>Source Files\ImGui\ImPlot</Filter>
+    </ClInclude>
+    <ClInclude Include="..\lib\implot\implot_internal.h">
+      <Filter>Source Files\ImGui\ImPlot</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -54,9 +63,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\lib\imgui\imgui.cpp">
-      <Filter>Source Files\ImGui</Filter>
-    </ClCompile>
-    <ClCompile Include="..\lib\imgui\imgui_demo.cpp">
       <Filter>Source Files\ImGui</Filter>
     </ClCompile>
     <ClCompile Include="..\lib\imgui\imgui_impl_glfw.cpp">
@@ -90,6 +96,16 @@
       <Filter>Source Files\ImGui</Filter>
     </ClCompile>
     <ClCompile Include="..\lib\imgui\imgui_widgets.cpp">
+    <ClCompile Include="..\lib\implot\implot.cpp">
+      <Filter>Source Files\ImGui\ImPlot</Filter>
+    </ClCompile>
+    <ClCompile Include="..\lib\implot\implot_demo.cpp">
+      <Filter>Source Files\ImGui\ImPlot</Filter>
+    </ClCompile>
+    <ClCompile Include="..\lib\implot\implot_items.cpp">
+      <Filter>Source Files\ImGui\ImPlot</Filter>
+    </ClCompile>
+    <ClCompile Include="..\lib\imgui\imgui_demo.cpp">
       <Filter>Source Files\ImGui</Filter>
     </ClCompile>
   </ItemGroup>
