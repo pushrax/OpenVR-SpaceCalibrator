@@ -167,7 +167,45 @@ static void LogRegistryResult(LSTATUS result)
 static std::string ReadRegistryKey()
 {
 #ifdef __linux__
-    FILE* file = fopen(LINUX_CONFIG_FILE, "r");
+
+    char configPath[1024];
+    const char * home = getenv("HOME");
+    snprintf( configPath, 1024, "%s/" LINUX_CONFIG_DIR, home);
+
+    struct stat statResult;
+    if(stat(LINUX_CONFIG_DIR, &statResult)){
+        if(errno != 2){ // no idea why 2 is returned instead of the documented ENOTDIR
+            int rr = errno;
+            LOG("Error determining if %s is a directory: %s, %s", configPath, strerror(rr), strerror(2));
+            return "";
+        } else {
+            int rr = errno;
+            LOG("The directory %s is confirmed to not exist %d-%s", configPath, rr, strerror(rr));
+            int retCode;
+
+            char cmd[1500];
+            snprintf(cmd, 1500, "mkdir -p %s", configPath);
+            LOG("Running: %s", cmd);
+            if( (retCode = system(cmd)) ){
+                LOG("Error %d making directory " LINUX_CONFIG_DIR, retCode);
+                return "";
+            }
+        }
+    }
+
+    char configFilePath[2000];
+    snprintf(configFilePath, 2000, "%s/" LINUX_CONFIG_FILE, configPath);
+
+    LOG("Opening file at %s", configFilePath);
+
+    FILE* file = fopen(configFilePath, "r");
+
+
+
+
+
+
+
     if(!file) return "";
 
     std::string ret;
