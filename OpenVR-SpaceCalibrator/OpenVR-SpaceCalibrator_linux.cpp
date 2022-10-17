@@ -1,61 +1,41 @@
-﻿#include "stdafx.h"
+#include "stdafx.h"
 #include "Calibration.h"
 #include "Configuration.h"
 #include "EmbeddedFiles.h"
 #include "UserInterface.h"
 
+#include <string>
+#include <codecvt>
+#include <locale>
+#include "GL/gl3w.h"
+
+#include <unistd.h>
+
+#include "HandleCommandLine.h"
+
 #include <imgui/imgui.h>
 #include <imgui/imgui_impl_glfw.h>
 #include <imgui/imgui_impl_opengl3.h>
-#include <GL/gl3w.h>
+
 #include <GLFW/glfw3.h>
 #include <openvr.h>
-#include <direct.h>
-#include "HandleCommandLine.h"
 
-#pragma comment(linker,"\"/manifestdependency:type='win32' \
-name='Microsoft.Windows.Common-Controls' version='6.0.0.0' \
-processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
-
-#define OPENVR_APPLICATION_KEY "pushrax.SpaceCalibrator"
-
-extern "C" __declspec(dllexport) DWORD NvOptimusEnablement = 0x00000001;
-extern "C" __declspec(dllexport) DWORD AmdPowerXpressRequestHighPerformance = 0x00000001;
-
-void CreateConsole()
-{
-	static bool created = false;
-	if (!created)
-	{
-		AllocConsole();
-		FILE *file = nullptr;
-		freopen_s(&file, "CONIN$", "r", stdin);
-		freopen_s(&file, "CONOUT$", "w", stdout);
-		freopen_s(&file, "CONOUT$", "w", stderr);
-		created = true;
-	}
-}
-
-//#define DEBUG_LOGS
+#include "StaticConfig.h"
 
 void GLFWErrorCallback(int error, const char* description)
 {
 	fprintf(stderr, "GLFW Error %d: %s\n", error, description);
 }
 
-void openGLDebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar *message, const void *userParam)
+void openGLDebugCallback(GLenum /* source */, GLenum /* type */, GLuint id, GLenum /* severity */, GLsizei length, const GLchar *message, const void * /* userParam */ )
 {
 	fprintf(stderr, "OpenGL Debug %u: %.*s\n", id, length, message);
 }
-
-static void HandleCommandLine(LPWSTR lpCmdLine);
 
 static GLFWwindow *glfwWindow = nullptr;
 static vr::VROverlayHandle_t overlayMainHandle = 0, overlayThumbnailHandle = 0;
 static GLuint fboHandle = 0, fboTextureHandle = 0;
 static int fboTextureWidth = 0, fboTextureHeight = 0;
-
-static char cwd[MAX_PATH];
 
 void CreateGLFWWindow()
 {
@@ -260,7 +240,8 @@ void RunLoop()
 				switch (vrEvent.eventType) {
 				case vr::VREvent_MouseMove:
 					io.MousePos.x = vrEvent.data.mouse.x;
-					io.MousePos.y = vrEvent.data.mouse.y;
+					//The mouse is flipped in linux
+					io.MousePos.y = height - vrEvent.data.mouse.y;
 					break;
 				case vr::VREvent_MouseButtonDown:
 					io.MouseDown[vrEvent.data.mouse.button == vr::VRMouseButton_Left ? 0 : 1] = true;
@@ -340,18 +321,40 @@ void RunLoop()
 	}
 }
 
-int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPWSTR lpCmdLine, _In_ int nCmdShow)
-{
-	_getcwd(cwd, MAX_PATH);
-	HandleCommandLine(lpCmdLine);
+using convert_t = std::codecvt_utf8<wchar_t>;
+std::wstring_convert<convert_t, wchar_t> strconverter;
 
-#ifdef DEBUG_LOGS
-	CreateConsole();
-#endif
+std::string to_string(std::wstring wstr)
+{
+    return strconverter.to_bytes(wstr);
+}
+
+std::wstring to_wstring(std::string str)
+{
+    return strconverter.from_bytes(str);
+}
+
+static void HandleCommandLineFunction(wchar_t const * lpCmdLine);
+int main(int argc, char ** argv)
+{
+	const int max_path = 2048;
+	char cwd[max_path] = {0};
+    wchar_t const * lpCmdLine;
+    std::wstring wide;
+    for(int i=1; i<argc; i++){
+        wide += to_wstring(argv[i]);
+    }
+    lpCmdLine = wide.c_str();
+	if( !getcwd(cwd, max_path) ){
+        std::cerr << "Could not get the current working directory" << std::endl;
+        return 1;
+    }
+
+	HandleCommandLineFunction(lpCmdLine, cwd);
 
 	if (!glfwInit())
 	{
-		MessageBox(nullptr, L"Failed to initialize GLFW", L"", 0);
+		std::wcerr << L"Failed to initialize GLFW";
 		return 0;
 	}
 
@@ -381,7 +384,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 		std::cerr << "Runtime error: " << e.what() << std::endl;
 		wchar_t message[1024];
 		swprintf(message, 1024, L"%hs", e.what());
-		MessageBox(nullptr, message, L"Runtime Error", 0);
+		std::wcerr << L"Runtime Error" << message;
 	}
 
 	if (glfwWindow)
@@ -390,24 +393,100 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 	glfwTerminate();
 	return 0;
 }
+bool StringMatch(wchar_t const * first, wchar_t const * second) {
+    bool ret;
+	ret =  wcscmp(first, second) == 0;
+    return ret;
+}
 
-static void HandleCommandLine(LPWSTR lpCmdLine)
+void InstallDriver(int max_path){
+		auto vrErr = vr::VRInitError_None;
+		vr::VR_Init(&vrErr, vr::VRApplication_Utility);
+		if (vrErr != vr::VRInitError_None)
+		{
+            fprintf(stderr, "Failed to initialize OpenVR: %s\n", vr::VR_GetVRInitErrorAsEnglishDescription(vrErr));
+            vr::VR_Shutdown();
+            exit(-2);
+        }
+
+		auto cruntimePath = std::make_unique<char[]>(max_path);
+        unsigned int pathLen;
+        vr::VR_GetRuntimePath(cruntimePath.get(), max_path, &pathLen);
+
+        const int cmdLength = 8196;
+        char cmd[cmdLength];
+
+        snprintf(cmd, cmdLength, "python " DRIVER_INSTALLER_PATH "/driverInstall.py --toInstall " DRIVER_MANIFEST_PATH " --vrpathreg %s/bin/vrpathreg.sh", cruntimePath.get());
+        printf("cmd: %s\n", cmd);
+        system(cmd);
+
+        vr::VR_Shutdown();
+        exit(0);
+}
+
+void UninstallDriver(int max_path){
+		auto vrErr = vr::VRInitError_None;
+		vr::VR_Init(&vrErr, vr::VRApplication_Utility);
+		if (vrErr != vr::VRInitError_None)
+		{
+            fprintf(stderr, "Failed to initialize OpenVR: %s\n", vr::VR_GetVRInitErrorAsEnglishDescription(vrErr));
+            vr::VR_Shutdown();
+            exit(-2);
+        }
+
+		auto cruntimePath = std::make_unique<char[]>(max_path);
+        unsigned int pathLen;
+        vr::VR_GetRuntimePath(cruntimePath.get(), max_path, &pathLen);
+
+        const int cmdLength = 8196;
+        char cmd[cmdLength];
+
+        snprintf(cmd, cmdLength,  "\"%s/bin/vrpathreg.sh\" removedriverwithname 01spacecalibrator", cruntimePath.get());
+        printf("cmd: %s\n", cmd);
+
+        vr::VR_Shutdown();
+        exit(0);
+}
+
+static void HandleCommandLineFunction(wchar_t const * lpCmdLine, char * cwd)
 {
-	if (lstrcmp(lpCmdLine, L"-openvrpath") == 0)
+	const int max_path = 2048;
+	if (StringMatch(lpCmdLine, L"-help") || StringMatch(lpCmdLine, L"-h"))
+    {
+        std::cout << "usage - OpenVR SpaceCalibrator, only pick one option" << std::endl;
+        std::cout << "-openvrpath                  print runtime path of openvr" << std::endl;
+        std::cout << "-installmanifest             install the application vrmanifest" << std::endl;
+        std::cout << "-removemanifest              remove the application vrmanifest" << std::endl;
+        std::cout << "-activatemultipledrivers     enable multiple drivers in steamvr" << std::endl;
+		//Note that the next 2 are not on the windows build
+        std::cout << "-installdriver               install the steam vr driver." << std::endl;
+        std::cout << "-uninstalldriver             uninstall the steam vr driver." << std::endl;
+        std::cout << "-help -h                     print this message" << std::endl;
+        exit(0);
+    }
+	else if (StringMatch(lpCmdLine, L"-openvrpath"))
 	{
-		char cruntimePath[MAX_PATH] = { 0 };
-		HandleCommandLine::OpenVRPath(cruntimePath, MAX_PATH);
+		char cruntimePath[max_path] = { 0 };
+		HandleCommandLine::OpenVRPath(cruntimePath, max_path);
 	}
-	else if (lstrcmp(lpCmdLine, L"-installmanifest") == 0)
+	else if (StringMatch(lpCmdLine, L"-installmanifest"))
 	{
-		HandleCommandLine::InstallManifest(cwd, MAX_PATH);
+		HandleCommandLine::InstallManifest(cwd, max_path);
 	}
-	else if (lstrcmp(lpCmdLine, L"-removemanifest") == 0)
+	else if (StringMatch(lpCmdLine, L"-removemanifest"))
 	{
 		HandleCommandLine::RemoveManifest(cwd);
 	}
-	else if (lstrcmp(lpCmdLine, L"-activatemultipledrivers") == 0)
+	else if (StringMatch(lpCmdLine, L"-activatemultipledrivers"))
 	{
 		HandleCommandLine::ActivateMultipleDrivers();
+	}
+	else if (StringMatch(lpCmdLine, L"-installdriver"))
+	{
+		InstallDriver(max_path);
+	}
+	else if (StringMatch(lpCmdLine, L"-uninstalldriver"))
+	{
+		UninstallDriver(max_path);
 	}
 }

@@ -4,10 +4,20 @@
 #include <picojson.h>
 
 #include <string>
-#include <iostream>
+#include "stdio.h"
 #include <fstream>
 #include <iomanip>
 #include <limits>
+
+#include "Logging.h"
+
+#ifdef __linux__
+#include <unistd.h> 
+#include <string.h>
+#include <sys/stat.h>
+#include "StaticConfig.h"
+#define LINUX_CONFIG_FILE "spacecal-config.json"
+#endif
 
 static picojson::array FloatArray(const float *buf, int numFloats)
 {
@@ -25,7 +35,7 @@ static void LoadFloatArray(const picojson::value &obj, float *buf, int numFloats
 		throw std::runtime_error("expected array, got " + obj.to_str());
 
 	auto &arr = obj.get<picojson::array>();
-	if (arr.size() != numFloats)
+	if (arr.size() != (size_t) numFloats)
 		throw std::runtime_error("wrong buffer size");
 
 	for (int i = 0; i < numFloats; i++)
@@ -142,56 +152,99 @@ static void WriteProfile(CalibrationContext &ctx, std::ostream &out)
 	out << profilesV.serialize(true);
 }
 
-static void LogRegistryResult(LSTATUS result)
-{
-	char *message;
-	FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_ALLOCATE_BUFFER, 0, result, LANG_USER_DEFAULT, (LPSTR)&message, 0, NULL);
-	std::cerr << "Opening registry key: " << message << std::endl;
-}
-
-static const char *RegistryKey = "Software\\OpenVR-SpaceCalibrator";
-
 static std::string ReadRegistryKey()
 {
-	DWORD size = 0;
-	auto result = RegGetValueA(HKEY_CURRENT_USER_LOCAL_SETTINGS, RegistryKey, "Config", RRF_RT_REG_SZ, 0, 0, &size);
-	if (result != ERROR_SUCCESS)
-	{
-		LogRegistryResult(result);
-		return "";
+	char configPath[1024];
+	const char * home = getenv("HOME");
+	snprintf( configPath, 1024, "%s/" LINUX_CONFIG_DIR, home);
+
+	struct stat statResult;
+	if(stat(LINUX_CONFIG_DIR, &statResult)){
+		if(errno != 2){ // no idea why 2 is returned instead of the documented ENOTDIR
+			int rr = errno;
+			LOG("Error determining if %s is a directory: %s, %s", configPath, strerror(rr), strerror(2));
+			return "";
+		} else {
+			int rr = errno;
+			LOG("The directory %s is confirmed to not exist %d-%s", configPath, rr, strerror(rr));
+			int retCode;
+
+			char cmd[1500];
+			snprintf(cmd, 1500, "mkdir -p %s", configPath);
+			LOG("Running: %s", cmd);
+			if( (retCode = system(cmd)) ){
+				LOG("Error %d making directory " LINUX_CONFIG_DIR, retCode);
+				return "";
+			}
+		}
 	}
 
-	std::string str;
-	str.resize(size);
+	char configFilePath[2000];
+	snprintf(configFilePath, 2000, "%s/" LINUX_CONFIG_FILE, configPath);
 
-	result = RegGetValueA(HKEY_CURRENT_USER_LOCAL_SETTINGS, RegistryKey, "Config", RRF_RT_REG_SZ, 0, &str[0], &size);
-	if (result != ERROR_SUCCESS)
-	{
-		LogRegistryResult(result);
-		return "";
-	}
-	
-	str.resize(size - 1);
-	return str;
+	LOG("Opening file at %s", configFilePath);
+
+	FILE* file = fopen(configFilePath, "r");
+
+	if(!file) return "";
+
+	std::string ret;
+	const int buffSize = 4097;
+	int count = 0;
+	char buff[buffSize];
+	buff[buffSize-1] = 0;
+
+	do{
+		count = fread((void*) buff, 1, buffSize, file);
+		if(count > 0){
+			ret += buff;
+		}
+	}while(buffSize == count);
+	fclose(file);
+	return ret;
 }
 
 static void WriteRegistryKey(std::string str)
 {
-	HKEY hkey;
-	auto result = RegCreateKeyExA(HKEY_CURRENT_USER_LOCAL_SETTINGS, RegistryKey, 0, REG_NONE, 0, KEY_ALL_ACCESS, 0, &hkey, 0);
-	if (result != ERROR_SUCCESS)
-	{
-		LogRegistryResult(result);
-		return;
+	struct stat statResult;
+
+	char configPath[1024];
+	const char * home = getenv("HOME");
+	snprintf( configPath, 1024, "%s/" LINUX_CONFIG_DIR, home);
+
+	if(stat(LINUX_CONFIG_DIR, &statResult)){
+		if(errno != 2){ // no idea why 2 is returned instead of the documented ENOTDIR
+			int rr = errno;
+			LOG("Error determining if %s is a directory: %s, %s", configPath, strerror(rr), strerror(2));
+			return;
+		} else {
+			int rr = errno;
+			LOG("The directory %s is confirmed to not exist %d-%s", configPath, rr, strerror(rr));
+			int retCode;
+
+			char cmd[1500];
+			snprintf(cmd, 1500, "mkdir -p %s", configPath);
+			LOG("Running: %s", cmd);
+			if( (retCode = system(cmd)) ){
+				LOG("Error %d making directory " LINUX_CONFIG_DIR, retCode);
+				return;
+			}
+		}
 	}
 
-	DWORD size = str.size() + 1;
+	char configFilePath[2000];
+	snprintf(configFilePath, 2000, "%s/" LINUX_CONFIG_FILE, configPath);
 
-	result = RegSetValueExA(hkey, "Config", 0, REG_SZ, reinterpret_cast<const BYTE*>(str.c_str()), size);
-	if (result != ERROR_SUCCESS)
-		LogRegistryResult(result);
+	FILE* file = fopen(configFilePath, "w");
+	if(!file) {
+		LOG("%s - %d-%s", "Error opening config file for writing", errno, strerror(errno));
+		return;
+	} else {
+		LOG("Opened file at %s to save settings", configFilePath);
+	}
 
-	RegCloseKey(hkey);
+	fprintf(file, "%s", str.c_str());
+	fclose(file);
 }
 
 void LoadProfile(CalibrationContext &ctx)
@@ -226,3 +279,4 @@ void SaveProfile(CalibrationContext &ctx)
 	WriteProfile(ctx, io);
 	WriteRegistryKey(io.str());
 }
+

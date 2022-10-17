@@ -4,7 +4,7 @@ project (OpenVR-SpaceCalibrator VERSION 1.0)
 add_definitions(-D__linux__)
 
 set(CMAKE_BUILD_TYPE Debug)
-set(DRIVER_LOG_FILE "/tmp/spaceCalDriverLog.txt" CACHE PATH "Driver Log Path" )
+set(DRIVER_LOG_FILE "/tmp/space_calibrator_driver.log" CACHE PATH "Driver Log Path" )
 set(LINUX_CONFIG_DIR ".config/OpenVR-SpaceCalibrator" CACHE PATH "Config subdirectory (from HOME)" )
 
 add_library(imgui 
@@ -34,9 +34,10 @@ set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 add_executable(OpenVR-SpaceCalibrator 
-    OpenVR-SpaceCalibrator/OpenVR-SpaceCalibrator.cpp
+    OpenVR-SpaceCalibrator/OpenVR-SpaceCalibrator_linux.cpp
     OpenVR-SpaceCalibrator/Calibration.cpp
-    OpenVR-SpaceCalibrator/Configuration.cpp
+    OpenVR-SpaceCalibrator/Configuration_linux.cpp
+    OpenVR-SpaceCalibrator/HandleCommandLine_linux.cpp
     OpenVR-SpaceCalibrator/EmbeddedFiles.cpp
     OpenVR-SpaceCalibrator/IPCClient.cpp
     OpenVR-SpaceCalibrator/OpenVR-SpaceCalibrator.cpp
