@@ -1,4 +1,3 @@
-#include "stdafx.h"
 #include "Calibration.h"
 #include "Configuration.h"
 #include "IPCClient.h"

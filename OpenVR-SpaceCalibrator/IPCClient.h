@@ -1,7 +1,6 @@
 #pragma once
 
 #ifdef __linux__
-#include "compat.h"
 #include "Comms.h"
 #else
 #endif

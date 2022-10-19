@@ -34,7 +34,8 @@ set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 add_executable(OpenVR-SpaceCalibrator 
-    OpenVR-SpaceCalibrator/OpenVR-SpaceCalibrator_linux.cpp
+    OpenVR-SpaceCalibrator/OpenVR-SpaceCalibrator.cpp
+    OpenVR-SpaceCalibrator/main_linux.cpp
     OpenVR-SpaceCalibrator/Calibration.cpp
     OpenVR-SpaceCalibrator/Configuration_linux.cpp
     OpenVR-SpaceCalibrator/HandleCommandLine_linux.cpp
@@ -42,8 +43,6 @@ add_executable(OpenVR-SpaceCalibrator
     OpenVR-SpaceCalibrator/IPCClient.cpp
     OpenVR-SpaceCalibrator/OpenVR-SpaceCalibrator.cpp
     OpenVR-SpaceCalibrator/UserInterface.cpp
-    OpenVR-SpaceCalibrator/stdafx.cpp
-    ./OpenVR-SpaceCalibratorDriver/compat.cpp
     ./OpenVR-SpaceCalibratorDriver/Logging.cpp
 )
 TARGET_LINK_LIBRARIES(OpenVR-SpaceCalibrator PRIVATE openvr_api imgui gl3w GL glfw)
@@ -54,10 +53,8 @@ add_library(
     OpenVR-SpaceCalibratorDriver/OpenVR-SpaceCalibratorDriver.cpp
     OpenVR-SpaceCalibratorDriver/Hooking.cpp
     OpenVR-SpaceCalibratorDriver/IPCServer.cpp
-    OpenVR-SpaceCalibratorDriver/InterfaceHookInjector.cpp
     OpenVR-SpaceCalibratorDriver/Logging.cpp
     OpenVR-SpaceCalibratorDriver/ServerTrackedDeviceProvider.cpp
-    OpenVR-SpaceCalibratorDriver/compat.cpp
     OpenVR-SpaceCalibratorDriver/dllmain.cpp
 )
 

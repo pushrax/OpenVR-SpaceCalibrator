@@ -4,10 +4,6 @@
 
 #include "Hooking.h"
 
-#ifdef __linux__
-#include "compat.h"
-#endif
-
 static ServerTrackedDeviceProvider *Driver = nullptr;
 
 static Hook<void*(*)(vr::IVRDriverContext *, const char *, vr::EVRInitError *)> 

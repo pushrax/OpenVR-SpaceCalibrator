@@ -1,15 +1,9 @@
 #pragma once
 
-#ifdef __linux__
-#include <wchar.h>
-#include "compat.h"
-
-#else
 #include "targetver.h"
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <tchar.h>
-#endif
 
 #include <stdlib.h>
 #include <malloc.h>

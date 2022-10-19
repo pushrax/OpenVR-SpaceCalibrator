@@ -1,7 +1,6 @@
 #pragma once
 
 #include "../Protocol.h"
-#include "compat.h"
 
 #include <thread>
 #include <set>

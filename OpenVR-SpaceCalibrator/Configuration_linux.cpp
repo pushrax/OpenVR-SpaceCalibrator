@@ -1,4 +1,3 @@
-#include "stdafx.h"
 #include "Configuration.h"
 
 #include <picojson.h>
@@ -11,13 +10,11 @@
 
 #include "Logging.h"
 
-#ifdef __linux__
 #include <unistd.h> 
 #include <string.h>
 #include <sys/stat.h>
 #include "StaticConfig.h"
 #define LINUX_CONFIG_FILE "spacecal-config.json"
-#endif
 
 static picojson::array FloatArray(const float *buf, int numFloats)
 {

@@ -3,6 +3,7 @@
 #include <Eigen/Core>
 #include <openvr.h>
 #include <vector>
+#include <iostream>
 
 enum class CalibrationState
 {
