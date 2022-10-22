@@ -40,7 +40,7 @@ add_executable(OpenVR-SpaceCalibrator
     OpenVR-SpaceCalibrator/Configuration_linux.cpp
     OpenVR-SpaceCalibrator/HandleCommandLine_linux.cpp
     OpenVR-SpaceCalibrator/EmbeddedFiles.cpp
-    OpenVR-SpaceCalibrator/IPCClient.cpp
+    OpenVR-SpaceCalibrator/IPCClient_linux.cpp
     OpenVR-SpaceCalibrator/OpenVR-SpaceCalibrator.cpp
     OpenVR-SpaceCalibrator/UserInterface.cpp
     ./OpenVR-SpaceCalibratorDriver/Logging.cpp
@@ -52,7 +52,7 @@ add_library(
     SHARED
     OpenVR-SpaceCalibratorDriver/OpenVR-SpaceCalibratorDriver.cpp
     OpenVR-SpaceCalibratorDriver/Hooking.cpp
-    OpenVR-SpaceCalibratorDriver/IPCServer.cpp
+    OpenVR-SpaceCalibratorDriver/IPCServer_linux.cpp
     OpenVR-SpaceCalibratorDriver/Logging.cpp
     OpenVR-SpaceCalibratorDriver/ServerTrackedDeviceProvider.cpp
     OpenVR-SpaceCalibratorDriver/dllmain.cpp
