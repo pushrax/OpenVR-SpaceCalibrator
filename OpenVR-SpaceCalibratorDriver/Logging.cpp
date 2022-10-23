@@ -23,9 +23,9 @@ void OpenLogFile()
 
 tm TimeForLog()
 {
-    if(LogFile == nullptr){
-        OpenLogFile();
-    }
+	if(LogFile == nullptr){
+		OpenLogFile();
+	}
 
 	auto now = std::chrono::system_clock::now();
 	auto nowTime = std::chrono::system_clock::to_time_t(now);

@@ -38,21 +38,23 @@ void IPCServer::Stop()
 	TRACE("%s", "IPCServer::Stop()");
 	if (!running)
 		return;
+
+
 	stop = true;
 }
 
 void IPCServer::RunThread(IPCServer *_this)
 {
-    Comms<protocol::Response, protocol::Request> comms;
+	Comms<protocol::Response, protocol::Request> comms;
 
-    protocol::Response response;
-    protocol::Request request;
+	protocol::Response response;
+	protocol::Request request;
 
-    while(!_this->stop){
-        comms.Recv(&request);
-        _this->HandleRequest(request, response);
-        comms.Send(response);
-    }
-    LOG("%s", "Stop requested");
+	while(!_this->stop){
+		comms.Recv(&request);
+		_this->HandleRequest(request, response);
+		comms.Send(response);
+	}
+	LOG("%s", "Stop requested");
 }
 

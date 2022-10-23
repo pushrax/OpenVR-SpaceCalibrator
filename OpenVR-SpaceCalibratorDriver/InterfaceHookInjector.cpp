@@ -63,7 +63,7 @@ static void *DetourGetGenericInterface(vr::IVRDriverContext *_this, const char *
 
 void InjectHooks(ServerTrackedDeviceProvider *driver, vr::IVRDriverContext *pDriverContext)
 {
-    LOG("%s", "Injecting hooks");
+	LOG("%s", "Injecting hooks");
 	Driver = driver;
 
 	auto err = MH_Initialize();
@@ -81,5 +81,5 @@ void InjectHooks(ServerTrackedDeviceProvider *driver, vr::IVRDriverContext *pDri
 void DisableHooks()
 {
 	IHook::DestroyAll();
-    MH_Uninitialize();
+	MH_Uninitialize();
 }

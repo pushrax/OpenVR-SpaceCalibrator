@@ -32,16 +32,16 @@ int main(int argc, char ** argv)
 {
 	const int max_path = 2048;
 	char cwd[max_path] = {0};
-    char const * cmdLine;
-    std::string str;
-    for(int i=1; i<argc; i++){
-        str += argv[i];
-    }
-    cmdLine = str.c_str();
+	char const * cmdLine;
+	std::string str;
+	for(int i=1; i<argc; i++){
+		str += argv[i];
+	}
+	cmdLine = str.c_str();
 	if( !getcwd(cwd, max_path) ){
-        std::cerr << "Could not get the current working directory" << std::endl;
-        return 1;
-    }
+		std::cerr << "Could not get the current working directory" << std::endl;
+		return 1;
+	}
 
 	HandleCommandLineFunction(cmdLine, cwd);
 
@@ -53,24 +53,24 @@ void InstallDriver(int max_path){
 		vr::VR_Init(&vrErr, vr::VRApplication_Utility);
 		if (vrErr != vr::VRInitError_None)
 		{
-            fprintf(stderr, "Failed to initialize OpenVR: %s\n", vr::VR_GetVRInitErrorAsEnglishDescription(vrErr));
-            vr::VR_Shutdown();
-            exit(-2);
-        }
+			fprintf(stderr, "Failed to initialize OpenVR: %s\n", vr::VR_GetVRInitErrorAsEnglishDescription(vrErr));
+			vr::VR_Shutdown();
+			exit(-2);
+		}
 
 		auto cruntimePath = std::make_unique<char[]>(max_path);
-        unsigned int pathLen;
-        vr::VR_GetRuntimePath(cruntimePath.get(), max_path, &pathLen);
+		unsigned int pathLen;
+		vr::VR_GetRuntimePath(cruntimePath.get(), max_path, &pathLen);
 
-        const int cmdLength = 8196;
-        char cmd[cmdLength];
+		const int cmdLength = 8196;
+		char cmd[cmdLength];
 
-        snprintf(cmd, cmdLength, "python " DRIVER_INSTALLER_PATH "/driverInstall.py --toInstall " DRIVER_MANIFEST_PATH " --vrpathreg %s/bin/vrpathreg.sh", cruntimePath.get());
-        printf("cmd: %s\n", cmd);
-        system(cmd);
+		snprintf(cmd, cmdLength, "python " DRIVER_INSTALLER_PATH "/driverInstall.py --toInstall " DRIVER_MANIFEST_PATH " --vrpathreg %s/bin/vrpathreg.sh", cruntimePath.get());
+		printf("cmd: %s\n", cmd);
+		system(cmd);
 
-        vr::VR_Shutdown();
-        exit(0);
+		vr::VR_Shutdown();
+		exit(0);
 }
 
 void UninstallDriver(int max_path){
@@ -78,41 +78,41 @@ void UninstallDriver(int max_path){
 		vr::VR_Init(&vrErr, vr::VRApplication_Utility);
 		if (vrErr != vr::VRInitError_None)
 		{
-            fprintf(stderr, "Failed to initialize OpenVR: %s\n", vr::VR_GetVRInitErrorAsEnglishDescription(vrErr));
-            vr::VR_Shutdown();
-            exit(-2);
-        }
+			fprintf(stderr, "Failed to initialize OpenVR: %s\n", vr::VR_GetVRInitErrorAsEnglishDescription(vrErr));
+			vr::VR_Shutdown();
+			exit(-2);
+		}
 
 		auto cruntimePath = std::make_unique<char[]>(max_path);
-        unsigned int pathLen;
-        vr::VR_GetRuntimePath(cruntimePath.get(), max_path, &pathLen);
+		unsigned int pathLen;
+		vr::VR_GetRuntimePath(cruntimePath.get(), max_path, &pathLen);
 
-        const int cmdLength = 8196;
-        char cmd[cmdLength];
+		const int cmdLength = 8196;
+		char cmd[cmdLength];
 
-        snprintf(cmd, cmdLength,  "\"%s/bin/vrpathreg.sh\" removedriverwithname 01spacecalibrator", cruntimePath.get());
-        printf("cmd: %s\n", cmd);
+		snprintf(cmd, cmdLength,  "\"%s/bin/vrpathreg.sh\" removedriverwithname 01spacecalibrator", cruntimePath.get());
+		printf("cmd: %s\n", cmd);
 
-        vr::VR_Shutdown();
-        exit(0);
+		vr::VR_Shutdown();
+		exit(0);
 }
 
 static void HandleCommandLineFunction(char const * cmdLine, char * cwd)
 {
 	const int max_path = 2048;
 	if (!strcmp(cmdLine, "-help") || !strcmp(cmdLine, "-h"))
-    {
-        std::cout << "usage - OpenVR SpaceCalibrator, only pick one option" << std::endl;
-        std::cout << "-openvrpath                  print runtime path of openvr" << std::endl;
-        std::cout << "-installmanifest             install the application vrmanifest" << std::endl;
-        std::cout << "-removemanifest              remove the application vrmanifest" << std::endl;
-        std::cout << "-activatemultipledrivers     enable multiple drivers in steamvr" << std::endl;
+	{
+		std::cout << "usage - OpenVR SpaceCalibrator, only pick one option" << std::endl;
+		std::cout << "-openvrpath				  print runtime path of openvr" << std::endl;
+		std::cout << "-installmanifest			 install the application vrmanifest" << std::endl;
+		std::cout << "-removemanifest			  remove the application vrmanifest" << std::endl;
+		std::cout << "-activatemultipledrivers	 enable multiple drivers in steamvr" << std::endl;
 		//Note that the next 2 are not on the windows build
-        std::cout << "-installdriver               install the steam vr driver." << std::endl;
-        std::cout << "-uninstalldriver             uninstall the steam vr driver." << std::endl;
-        std::cout << "-help -h                     print this message" << std::endl;
-        exit(0);
-    }
+		std::cout << "-installdriver			   install the steam vr driver." << std::endl;
+		std::cout << "-uninstalldriver			 uninstall the steam vr driver." << std::endl;
+		std::cout << "-help -h					 print this message" << std::endl;
+		exit(0);
+	}
 	else if (!strcmp(cmdLine, "-openvrpath"))
 	{
 		char cruntimePath[max_path] = { 0 };

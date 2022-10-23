@@ -51,7 +51,7 @@ static inline void InstallManifest(char const * const cwd, int max_path) {
 				}
 			}
 			std::string manifestPath = cwd;
-            manifestPath = HandleCommandLine::ManifestPath(manifestPath);
+			manifestPath = HandleCommandLine::ManifestPath(manifestPath);
 
 			std::cout << "Adding manifest path: " << manifestPath << std::endl;
 			auto vrAppErr = vr::VRApplications()->AddApplicationManifest(manifestPath.c_str());
@@ -78,8 +78,8 @@ static inline void RemoveManifest(char const * const cwd) {
 		{
 			if (vr::VRApplications()->IsApplicationInstalled(OPENVR_APPLICATION_KEY))
 			{
-                std::string manifestPath = cwd;
-                manifestPath = ManifestPath(manifestPath);
+				std::string manifestPath = cwd;
+				manifestPath = ManifestPath(manifestPath);
 
 				std::cout << "Removing manifest path: " << manifestPath << std::endl;
 				vr::VRApplications()->RemoveApplicationManifest(manifestPath.c_str());

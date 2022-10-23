@@ -73,7 +73,7 @@ void BuildMenu(bool runningInOverlay)
 		if (CalCtx.validProfile && !CalCtx.enabled)
 		{
 			ImGui::TextColored(ImColor(0.8f, 0.2f, 0.2f), "Reference (%s) HMD not detected, profile disabled", CalCtx.referenceTrackingSystem.c_str());
-            ImGui::Text("%s", "");
+			ImGui::Text("%s", "");
 		}
 
 		float width = ImGui::GetWindowContentRegionWidth(), scale = 1.0f;
@@ -113,7 +113,7 @@ void BuildMenu(bool runningInOverlay)
 			scale = 0.5;
 		}
 
-        ImGui::Text("%s", "");
+		ImGui::Text("%s", "");
 		if (ImGui::Button("Copy Chaperone Bounds to profile", ImVec2(width * scale, ImGui::GetTextLineHeight() * 2)))
 		{
 			LoadChaperoneBounds();
@@ -134,22 +134,22 @@ void BuildMenu(bool runningInOverlay)
 			}
 		}
 
-        ImGui::Text("%s", "");
+		ImGui::Text("%s", "");
 		auto speed = CalCtx.calibrationSpeed;
 
 		ImGui::Columns(4, NULL, false);
 		ImGui::Text("Calibration Speed");
 
 		ImGui::NextColumn();
-		if (ImGui::RadioButton(" Fast          ", speed == CalibrationContext::FAST))
+		if (ImGui::RadioButton(" Fast		  ", speed == CalibrationContext::FAST))
 			CalCtx.calibrationSpeed = CalibrationContext::FAST;
 
 		ImGui::NextColumn();
-		if (ImGui::RadioButton(" Slow          ", speed == CalibrationContext::SLOW))
+		if (ImGui::RadioButton(" Slow		  ", speed == CalibrationContext::SLOW))
 			CalCtx.calibrationSpeed = CalibrationContext::SLOW;
 
 		ImGui::NextColumn();
-		if (ImGui::RadioButton(" Very Slow     ", speed == CalibrationContext::VERY_SLOW))
+		if (ImGui::RadioButton(" Very Slow	 ", speed == CalibrationContext::VERY_SLOW))
 			CalCtx.calibrationSpeed = CalibrationContext::VERY_SLOW;
 
 		ImGui::Columns(1);
@@ -204,7 +204,7 @@ void BuildMenu(bool runningInOverlay)
 
 		if (CalCtx.state == CalibrationState::None)
 		{
-            ImGui::Text("%s", "");
+			ImGui::Text("%s", "");
 			if (ImGui::Button("Close", ImVec2(ImGui::GetWindowContentRegionWidth(), ImGui::GetTextLineHeight() * 2)))
 				ImGui::CloseCurrentPopup();
 		}

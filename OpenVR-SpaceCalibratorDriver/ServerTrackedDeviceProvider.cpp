@@ -7,8 +7,8 @@
 vr::EVRInitError ServerTrackedDeviceProvider::Init(vr::IVRDriverContext *pDriverContext)
 {
 
-    //LOG("%s", "Starting loop break");
-    //loopBreak();
+	//LOG("%s", "Starting loop break");
+	//loopBreak();
 
 	TRACE("%s", "ServerTrackedDeviceProvider::Init()");
 	VR_INIT_SERVER_DRIVER_CONTEXT(pDriverContext);

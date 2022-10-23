@@ -6,14 +6,14 @@
 
 __attribute__((constructor)) 
 static void loaded(){
-    int pid = getpid();
-    LOG("OpenVR-SpaceCalibratorDriver " SPACECAL_VERSION_STRING " loaded into pid %d", pid);
+	int pid = getpid();
+	LOG("OpenVR-SpaceCalibratorDriver " SPACECAL_VERSION_STRING " loaded into pid %d", pid);
 }
 
 __attribute__((destructor)) 
 static void unloaded(){
-    int pid = getpid();
-    LOG("OpenVR-SpaceCalibratorDriver " SPACECAL_VERSION_STRING " unloaded from pid %d", pid);
+	int pid = getpid();
+	LOG("OpenVR-SpaceCalibratorDriver " SPACECAL_VERSION_STRING " unloaded from pid %d", pid);
 }
 
 
