@@ -67,7 +67,7 @@ public:
 		}
 
 		uintptr_t otherPage = (uintptr_t) vtable & ~(uintptr_t) (pageSize - 1);
-		int err = mprotect((void*) otherPage, pageSize, PROT_READ | PROT_WRITE);
+		int err = mprotect((void*) otherPage, pageSize, PROT_READ | PROT_WRITE | PROT_EXEC);
 		if(err){
 			LOG("Failed to set memory protection %d-%s", err, strerror(errno));
 		}
