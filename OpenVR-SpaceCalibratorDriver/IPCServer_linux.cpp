@@ -3,11 +3,6 @@
 #include "ServerTrackedDeviceProvider.h"
 #include "Comms.h"
 
-#include ""
-
-struct IPCServerImpl {
-};
-
 void IPCServer::HandleRequest(const protocol::Request &request, protocol::Response &response)
 {
 	switch (request.type)
@@ -45,6 +40,7 @@ void IPCServer::Stop()
 		return;
 	stop = true;
 }
+
 void IPCServer::RunThread(IPCServer *_this)
 {
     Comms<protocol::Response, protocol::Request> comms;

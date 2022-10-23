@@ -1,16 +1,15 @@
 #pragma once
 
-#ifdef __linux__
-#include "Comms.h"
-#else
-#endif
-
+#include <memory>
 #include "../Protocol.h"
+
+struct IPCClientImpl; 
 
 class IPCClient
 {
 public:
 	~IPCClient();
+	IPCClient();
 
 	void Connect();
 	protocol::Response SendBlocking(const protocol::Request &request);
@@ -19,9 +18,5 @@ public:
 	protocol::Response Receive();
 
 private:
-#ifdef __linux__
-    Client<protocol::Request, protocol::Response> pipe;
-#else
-    HANDLE pipe = INVALID_HANDLE_VALUE;
-#endif
+	std::unique_ptr<IPCClientImpl> impl;
 };
