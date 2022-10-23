@@ -1,8 +1,9 @@
-﻿#include "stdafx.h"
-#include "Calibration.h"
+﻿#include "Calibration.h"
 #include "Configuration.h"
 #include "EmbeddedFiles.h"
 #include "UserInterface.h"
+#include "OpenVR-SpaceCalibrator.h"
+#include "iostream"
 
 #include <imgui/imgui.h>
 #include <imgui/imgui_impl_glfw.h>
@@ -10,30 +11,6 @@
 #include <GL/gl3w.h>
 #include <GLFW/glfw3.h>
 #include <openvr.h>
-#include <direct.h>
-
-#pragma comment(linker,"\"/manifestdependency:type='win32' \
-name='Microsoft.Windows.Common-Controls' version='6.0.0.0' \
-processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
-
-#define OPENVR_APPLICATION_KEY "pushrax.SpaceCalibrator"
-
-extern "C" __declspec(dllexport) DWORD NvOptimusEnablement = 0x00000001;
-extern "C" __declspec(dllexport) DWORD AmdPowerXpressRequestHighPerformance = 0x00000001;
-
-void CreateConsole()
-{
-	static bool created = false;
-	if (!created)
-	{
-		AllocConsole();
-		FILE *file = nullptr;
-		freopen_s(&file, "CONIN$", "r", stdin);
-		freopen_s(&file, "CONOUT$", "w", stdout);
-		freopen_s(&file, "CONOUT$", "w", stderr);
-		created = true;
-	}
-}
 
 //#define DEBUG_LOGS
 
@@ -47,14 +24,10 @@ void openGLDebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity,
 	fprintf(stderr, "OpenGL Debug %u: %.*s\n", id, length, message);
 }
 
-static void HandleCommandLine(LPWSTR lpCmdLine);
-
 static GLFWwindow *glfwWindow = nullptr;
 static vr::VROverlayHandle_t overlayMainHandle = 0, overlayThumbnailHandle = 0;
 static GLuint fboHandle = 0, fboTextureHandle = 0;
 static int fboTextureWidth = 0, fboTextureHeight = 0;
-
-static char cwd[MAX_PATH];
 
 void CreateGLFWWindow()
 {
@@ -116,7 +89,7 @@ void CreateGLFWWindow()
 	}
 }
 
-void TryCreateVROverlay()
+void TryCreateVROverlay(char const * cwd)
 {
 	if (overlayMainHandle || !vr::VROverlay())
 		return;
@@ -202,11 +175,11 @@ void InitVR()
 	ActivateMultipleDrivers();
 }
 
-void RunLoop()
+void RunLoop(char const * cwd)
 {
 	while (!glfwWindowShouldClose(glfwWindow))
 	{
-		TryCreateVROverlay();
+		TryCreateVROverlay(cwd);
 
 		double time = glfwGetTime();
 		CalibrationTick(time);
@@ -339,29 +312,24 @@ void RunLoop()
 	}
 }
 
-int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPWSTR lpCmdLine, _In_ int nCmdShow)
-{
-	_getcwd(cwd, MAX_PATH);
-	HandleCommandLine(lpCmdLine);
-
-#ifdef DEBUG_LOGS
-	CreateConsole();
-#endif
-
+int MainApplication(char const * const cwd, InitErrorCallback errCB){
 	if (!glfwInit())
 	{
-		MessageBox(nullptr, L"Failed to initialize GLFW", L"", 0);
+		errCB("Failed to initialize GLFW");
 		return 0;
 	}
 
 	glfwSetErrorCallback(GLFWErrorCallback);
+
 
 	try {
 		InitVR();
 		CreateGLFWWindow();
 		InitCalibrator();
 		LoadProfile(CalCtx);
-		RunLoop();
+
+
+		RunLoop(cwd);
 
 		vr::VR_Shutdown();
 
@@ -377,10 +345,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 	}
 	catch (std::runtime_error &e)
 	{
-		std::cerr << "Runtime error: " << e.what() << std::endl;
-		wchar_t message[1024];
-		swprintf(message, 1024, L"%hs", e.what());
-		MessageBox(nullptr, message, L"Runtime Error", 0);
+		errCB(e.what());
 	}
 
 	if (glfwWindow)
@@ -390,110 +355,4 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 	return 0;
 }
 
-static void HandleCommandLine(LPWSTR lpCmdLine)
-{
-	if (lstrcmp(lpCmdLine, L"-openvrpath") == 0)
-	{
-		auto vrErr = vr::VRInitError_None;
-		vr::VR_Init(&vrErr, vr::VRApplication_Utility);
-		if (vrErr == vr::VRInitError_None)
-		{
-			char cruntimePath[MAX_PATH] = { 0 };
-			unsigned int pathLen;
-			vr::VR_GetRuntimePath(cruntimePath, MAX_PATH, &pathLen);
 
-			printf("%s", cruntimePath);
-			vr::VR_Shutdown();
-			exit(0);
-		}
-		fprintf(stderr, "Failed to initialize OpenVR: %s\n", vr::VR_GetVRInitErrorAsEnglishDescription(vrErr));
-		vr::VR_Shutdown();
-		exit(-2);
-	}
-	else if (lstrcmp(lpCmdLine, L"-installmanifest") == 0)
-	{
-		auto vrErr = vr::VRInitError_None;
-		vr::VR_Init(&vrErr, vr::VRApplication_Utility);
-		if (vrErr == vr::VRInitError_None)
-		{
-			if (vr::VRApplications()->IsApplicationInstalled(OPENVR_APPLICATION_KEY))
-			{
-				char oldWd[MAX_PATH] = { 0 };
-				auto vrAppErr = vr::VRApplicationError_None;
-				vr::VRApplications()->GetApplicationPropertyString(OPENVR_APPLICATION_KEY, vr::VRApplicationProperty_WorkingDirectory_String, oldWd, MAX_PATH, &vrAppErr);
-				if (vrAppErr != vr::VRApplicationError_None)
-				{
-					fprintf(stderr, "Failed to get old working dir, skipping removal: %s\n", vr::VRApplications()->GetApplicationsErrorNameFromEnum(vrAppErr));
-				}
-				else
-				{
-					std::string manifestPath = oldWd;
-					manifestPath += "\\manifest.vrmanifest";
-					std::cout << "Removing old manifest path: " << manifestPath << std::endl;
-					vr::VRApplications()->RemoveApplicationManifest(manifestPath.c_str());
-				}
-			}
-			std::string manifestPath = cwd;
-			manifestPath += "\\manifest.vrmanifest";
-			std::cout << "Adding manifest path: " << manifestPath << std::endl;
-			auto vrAppErr = vr::VRApplications()->AddApplicationManifest(manifestPath.c_str());
-			if (vrAppErr != vr::VRApplicationError_None)
-			{
-				fprintf(stderr, "Failed to add manifest: %s\n", vr::VRApplications()->GetApplicationsErrorNameFromEnum(vrAppErr));
-			}
-			else
-			{
-				vr::VRApplications()->SetApplicationAutoLaunch(OPENVR_APPLICATION_KEY, true);
-			}
-			vr::VR_Shutdown();
-			exit(-2);
-		}
-		fprintf(stderr, "Failed to initialize OpenVR: %s\n", vr::VR_GetVRInitErrorAsEnglishDescription(vrErr));
-		vr::VR_Shutdown();
-		exit(-2);
-	}
-	else if (lstrcmp(lpCmdLine, L"-removemanifest") == 0)
-	{
-		auto vrErr = vr::VRInitError_None;
-		vr::VR_Init(&vrErr, vr::VRApplication_Utility);
-		if (vrErr == vr::VRInitError_None)
-		{
-			if (vr::VRApplications()->IsApplicationInstalled(OPENVR_APPLICATION_KEY))
-			{
-				std::string manifestPath = cwd;
-				manifestPath += "\\manifest.vrmanifest";
-				std::cout << "Removing manifest path: " << manifestPath << std::endl;
-				vr::VRApplications()->RemoveApplicationManifest(manifestPath.c_str());
-			}
-			vr::VR_Shutdown();
-			exit(0);
-		}
-		fprintf(stderr, "Failed to initialize OpenVR: %s\n", vr::VR_GetVRInitErrorAsEnglishDescription(vrErr));
-		vr::VR_Shutdown();
-		exit(-2);
-	}
-	else if (lstrcmp(lpCmdLine, L"-activatemultipledrivers") == 0)
-	{
-		int ret = -2;
-		auto vrErr = vr::VRInitError_None;
-		vr::VR_Init(&vrErr, vr::VRApplication_Utility);
-		if (vrErr == vr::VRInitError_None)
-		{
-			try
-			{
-				ActivateMultipleDrivers();
-				ret = 0;
-			}
-			catch (std::runtime_error &e)
-			{
-				std::cerr << e.what() << std::endl;
-			}
-		}
-		else
-		{
-			fprintf(stderr, "Failed to initialize OpenVR: %s\n", vr::VR_GetVRInitErrorAsEnglishDescription(vrErr));
-		}
-		vr::VR_Shutdown();
-		exit(ret);
-	}
-}

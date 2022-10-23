@@ -1,13 +1,19 @@
 #include "ServerTrackedDeviceProvider.h"
 #include "Logging.h"
 #include "InterfaceHookInjector.h"
+#include <cstdlib>
+#include <cstring>
 
 vr::EVRInitError ServerTrackedDeviceProvider::Init(vr::IVRDriverContext *pDriverContext)
 {
-	TRACE("ServerTrackedDeviceProvider::Init()");
+
+	//LOG("%s", "Starting loop break");
+	//loopBreak();
+
+	TRACE("%s", "ServerTrackedDeviceProvider::Init()");
 	VR_INIT_SERVER_DRIVER_CONTEXT(pDriverContext);
 
-	memset(transforms, 0, vr::k_unMaxTrackedDeviceCount * sizeof DeviceTransform);
+	memset(transforms, 0, vr::k_unMaxTrackedDeviceCount * sizeof(DeviceTransform));
 
 	InjectHooks(this, pDriverContext);
 	server.Run();
@@ -17,7 +23,7 @@ vr::EVRInitError ServerTrackedDeviceProvider::Init(vr::IVRDriverContext *pDriver
 
 void ServerTrackedDeviceProvider::Cleanup()
 {
-	TRACE("ServerTrackedDeviceProvider::Cleanup()");
+	TRACE("%s", "ServerTrackedDeviceProvider::Cleanup()");
 	server.Stop();
 	DisableHooks();
 	VR_CLEANUP_SERVER_DRIVER_CONTEXT();

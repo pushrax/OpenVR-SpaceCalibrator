@@ -1,7 +1,8 @@
 #include "Logging.h"
-#include "Hooking.h"
 #include "InterfaceHookInjector.h"
 #include "ServerTrackedDeviceProvider.h"
+
+#include "Hooking.h"
 
 static ServerTrackedDeviceProvider *Driver = nullptr;
 
@@ -62,6 +63,7 @@ static void *DetourGetGenericInterface(vr::IVRDriverContext *_this, const char *
 
 void InjectHooks(ServerTrackedDeviceProvider *driver, vr::IVRDriverContext *pDriverContext)
 {
+	LOG("%s", "Injecting hooks");
 	Driver = driver;
 
 	auto err = MH_Initialize();

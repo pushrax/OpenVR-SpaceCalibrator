@@ -16,21 +16,21 @@ public:
 	virtual void Cleanup() override;
 
 	/** Returns the version of the ITrackedDeviceServerDriver interface used by this driver */
-	virtual const char * const *GetInterfaceVersions() { return vr::k_InterfaceVersions; }
+	virtual const char * const *GetInterfaceVersions() override { return vr::k_InterfaceVersions; }
 
 	/** Allows the driver do to some work in the main loop of the server. */
-	virtual void RunFrame() { }
+	virtual void RunFrame() override  { }
 
 	/** Returns true if the driver wants to block Standby mode. */
-	virtual bool ShouldBlockStandbyMode() { return false; }
+	virtual bool ShouldBlockStandbyMode() override { return false; }
 
 	/** Called when the system is entering Standby mode. The driver should switch itself into whatever sort of low-power
 	* state it has. */
-	virtual void EnterStandby() { }
+	virtual void EnterStandby() override { }
 
 	/** Called when the system is leaving Standby mode. The driver should switch itself back to
 	full operation. */
-	virtual void LeaveStandby() { }
+	virtual void LeaveStandby() override { }
 
 	////// End vr::IServerTrackedDeviceProvider functions
 

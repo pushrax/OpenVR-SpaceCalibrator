@@ -8,6 +8,10 @@
 
 #define OPENVR_SPACECALIBRATOR_PIPE_NAME "\\\\.\\pipe\\OpenVRSpaceCalibratorDriver"
 
+
+#define COMM_PORT_SERVER 5473
+#define COMM_PORT_CLIENT 5474
+
 namespace protocol
 {
 	const uint32_t Version = 2;
@@ -42,23 +46,23 @@ namespace protocol
 		vr::HmdQuaternion_t rotation;
 		double scale;
 
-		SetDeviceTransform(uint32_t id, bool enabled) :
-			openVRID(id), enabled(enabled), updateTranslation(false), updateRotation(false), updateScale(false) { }
+		SetDeviceTransform(uint32_t id, bool _enabled) :
+			openVRID(id), enabled(_enabled), updateTranslation(false), updateRotation(false), updateScale(false) { }
 
-		SetDeviceTransform(uint32_t id, bool enabled, vr::HmdVector3d_t translation) :
-			openVRID(id), enabled(enabled), updateTranslation(true), updateRotation(false), updateScale(false), translation(translation) { }
+		SetDeviceTransform(uint32_t id, bool _enabled, vr::HmdVector3d_t _translation) :
+			openVRID(id), enabled(_enabled), updateTranslation(true), updateRotation(false), updateScale(false), translation(_translation) { }
 
-		SetDeviceTransform(uint32_t id, bool enabled, vr::HmdQuaternion_t rotation) :
-			openVRID(id), enabled(enabled), updateTranslation(false), updateRotation(true), updateScale(false), rotation(rotation) { }
+		SetDeviceTransform(uint32_t id, bool _enabled, vr::HmdQuaternion_t _rotation) :
+			openVRID(id), enabled(_enabled), updateTranslation(false), updateRotation(true), updateScale(false), rotation(_rotation) { }
 
-		SetDeviceTransform(uint32_t id, bool enabled, double scale) :
-			openVRID(id), enabled(enabled), updateTranslation(false), updateRotation(false), updateScale(true), scale(scale) { }
+		SetDeviceTransform(uint32_t id, bool _enabled, double _scale) :
+			openVRID(id), enabled(_enabled), updateTranslation(false), updateRotation(false), updateScale(true), scale(_scale) { }
 
-		SetDeviceTransform(uint32_t id, bool enabled, vr::HmdVector3d_t translation, vr::HmdQuaternion_t rotation) :
-			openVRID(id), enabled(enabled), updateTranslation(true), updateRotation(true), updateScale(false), translation(translation), rotation(rotation) { }
+		SetDeviceTransform(uint32_t id, bool _enabled, vr::HmdVector3d_t _translation, vr::HmdQuaternion_t _rotation) :
+			openVRID(id), enabled(_enabled), updateTranslation(true), updateRotation(true), updateScale(false), translation(_translation), rotation(_rotation) { }
 
-		SetDeviceTransform(uint32_t id, bool enabled, vr::HmdVector3d_t translation, vr::HmdQuaternion_t rotation, double scale) :
-			openVRID(id), enabled(enabled), updateTranslation(true), updateRotation(true), updateScale(true), translation(translation), rotation(rotation), scale(scale) { }
+		SetDeviceTransform(uint32_t id, bool _enabled, vr::HmdVector3d_t _translation, vr::HmdQuaternion_t _rotation, double _scale) :
+			openVRID(id), enabled(_enabled), updateTranslation(true), updateRotation(true), updateScale(true), translation(_translation), rotation(_rotation), scale(_scale) { }
 	};
 
 	struct Request
@@ -70,7 +74,7 @@ namespace protocol
 		};
 
 		Request() : type(RequestInvalid) { }
-		Request(RequestType type) : type(type) { }
+		Request(RequestType _type) : type(_type) { }
 	};
 
 	struct Response
@@ -82,6 +86,6 @@ namespace protocol
 		};
 
 		Response() : type(ResponseInvalid) { }
-		Response(ResponseType type) : type(type) { }
+		Response(ResponseType _type) : type(_type) { }
 	};
 }

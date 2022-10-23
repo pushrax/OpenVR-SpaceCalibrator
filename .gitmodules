@@ -1,0 +1,9 @@
+[submodule "OpenVR-SpaceCalibrator/gl3w"]
+	path = OpenVR-SpaceCalibrator/gl3w
+	url = https://github.com/skaslev/gl3w.git
+[submodule "modules/imgui"]
+	path = modules/imgui
+	url = https://github.com/ocornut/imgui.git
+[submodule "modules/openvr"]
+	path = modules/openvr
+	url = https://github.com/ValveSoftware/openvr.git

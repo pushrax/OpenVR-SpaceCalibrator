@@ -1,11 +1,15 @@
 #pragma once
 
+#include <memory>
 #include "../Protocol.h"
+
+struct IPCClientImpl; 
 
 class IPCClient
 {
 public:
 	~IPCClient();
+	IPCClient();
 
 	void Connect();
 	protocol::Response SendBlocking(const protocol::Request &request);
@@ -14,5 +18,5 @@ public:
 	protocol::Response Receive();
 
 private:
-	HANDLE pipe = INVALID_HANDLE_VALUE;
+	std::unique_ptr<IPCClientImpl> impl;
 };

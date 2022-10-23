@@ -1,9 +1,19 @@
 #pragma once
 
 #include "Logging.h"
+
+#ifdef __linux__
+#include <unistd.h>
+#include "string.h"
+#include <sys/mman.h>
+#else
 #include <MinHook.h>
-#include <map>
+#endif
+
 #include <string>
+#include <vector>
+#include <map>
+#include <stdexcept>
 
 class IHook
 {
@@ -26,13 +36,60 @@ private:
 
 template<class FuncType> class Hook : public IHook
 {
+	void * obj = nullptr;
+	int offset = 0;
 public:
 	FuncType originalFunc = nullptr;
 	Hook(const std::string &name) : IHook(name) { }
 
-	bool CreateHookInObjectVTable(void *object, int vtableOffset, void *detourFunction)
+#ifdef __linux__
+	template<typename T>
+	bool CreateHookInObjectVTable(void *object, int vtableOffset, T* detourFunction)
 	{
-		// For virtual objects, VC++ adds a pointer to the vtable as the first member.
+		long pageSize = sysconf(_SC_PAGESIZE);
+
+		obj = object;
+		offset = vtableOffset;
+   		// For virtual objects, VC++ (and from what I can tell gcc)  adds a pointer to the vtable as the first member.
+		// To access the vtable, we simply dereference the object.
+		void **vtable = *((void ***)object);
+
+		// The vtable itself is an array of pointers to member functions,
+		// in the order they were declared in.
+		originalFunc = (FuncType) vtable[vtableOffset];
+		targetFunc = (void*) vtable[vtableOffset];
+
+		if((uintptr_t) vtable % 8  != 0 )
+		{
+			obj = nullptr;
+			originalFunc = nullptr;
+			throw std::runtime_error("vtable entry not aligned to 8 byte pointer");
+		}
+
+		uintptr_t otherPage = (uintptr_t) vtable & ~(uintptr_t) (pageSize - 1);
+		int err = mprotect((void*) otherPage, pageSize, PROT_READ | PROT_WRITE | PROT_EXEC);
+		if(err){
+			LOG("Failed to set memory protection %d-%s", err, strerror(errno));
+		}
+		else {
+			//LOG("%s", "Setting vtable value");
+			vtable[vtableOffset] = (void*) detourFunction;
+			//LOG("%s", "Resetting permissions vtable value");
+			mprotect((void*) otherPage, pageSize, PROT_READ | PROT_EXEC);
+		}
+
+		LOG("Enabled Linux hook for %s", name.c_str());
+		enabled = true;
+		return true;
+	}
+#else
+	template<typename T>
+	bool CreateHookInObjectVTable(void *object, int vtableOffset, T* detourFunction)
+	{
+		obj = object;
+		offset = vtableOffset;
+
+		// For virtual objects, VC++ (and from what I can tell gcc)  adds a pointer to the vtable as the first member.
 		// To access the vtable, we simply dereference the object.
 		void **vtable = *((void ***)object);
 
@@ -59,6 +116,17 @@ public:
 		enabled = true;
 		return true;
 	}
+#endif
+
+#ifdef __linux__
+	void Destroy()
+	{
+		//redoing it is enough if it was done the first time.
+		if(obj && originalFunc) CreateHookInObjectVTable(obj, offset, originalFunc);
+		obj = nullptr;
+		originalFunc = nullptr;
+	}
+#else
 
 	void Destroy()
 	{
@@ -68,6 +136,7 @@ public:
 			enabled = false;
 		}
 	}
+#endif
 
 private:
 	bool enabled = false;

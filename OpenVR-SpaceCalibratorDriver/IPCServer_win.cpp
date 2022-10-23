@@ -2,6 +2,33 @@
 #include "Logging.h"
 #include "ServerTrackedDeviceProvider.h"
 
+struct IPCClientImpl{
+	struct PipeInstance
+	{
+		OVERLAPPED overlap; // Used by the API
+		HANDLE pipe;
+		IPCServer *server;
+
+		protocol::Request request;
+		protocol::Response response;
+	};
+
+	PipeInstance *CreatePipeInstance(HANDLE pipe);
+	void ClosePipeInstance(PipeInstance *pipeInst);
+	static void WINAPI CompletedReadCallback(DWORD err, DWORD bytesRead, LPOVERLAPPED overlap);
+	static void WINAPI CompletedWriteCallback(DWORD err, DWORD bytesWritten, LPOVERLAPPED overlap);
+	static BOOL CreateAndConnectInstance(LPOVERLAPPED overlap, HANDLE &pipe);
+
+	std::set<PipeInstance *> pipes;
+	HANDLE connectEvent;
+};
+
+
+IPCServer::IPCServer(ServerTrackedDeviceProvider *driver); : driver(driver)
+{ 
+	impl = std::make_unique<IPCServerImpl>();
+}
+
 void IPCServer::HandleRequest(const protocol::Request &request, protocol::Response &response)
 {
 	switch (request.type)
@@ -34,18 +61,17 @@ void IPCServer::Run()
 
 void IPCServer::Stop()
 {
-	TRACE("IPCServer::Stop()");
+	TRACE("%s", "IPCServer::Stop()");
 	if (!running)
 		return;
-
 	stop = true;
+
 	SetEvent(connectEvent);
 	mainThread.join();
 	running = false;
 	TRACE("IPCServer::Stop() finished");
 }
-
-IPCServer::PipeInstance *IPCServer::CreatePipeInstance(HANDLE pipe)
+IPCServerImpl::PipeInstance *IPCServerImpl::CreatePipeInstance(HANDLE pipe)
 {
 	auto pipeInst = new PipeInstance;
 	pipeInst->pipe = pipe;
@@ -54,7 +80,7 @@ IPCServer::PipeInstance *IPCServer::CreatePipeInstance(HANDLE pipe)
 	return pipeInst;
 }
 
-void IPCServer::ClosePipeInstance(PipeInstance *pipeInst)
+void IPCServerImpl::ClosePipeInstance(PipeInstance *pipeInst)
 {
 	DisconnectNamedPipe(pipeInst->pipe);
 	CloseHandle(pipeInst->pipe);
@@ -122,13 +148,14 @@ void IPCServer::RunThread(IPCServer *_this)
 
 	for (auto &pipeInst : _this->pipes)
 	{
-		_this->ClosePipeInstance(pipeInst);
+		_this->impl->ClosePipeInstance(pipeInst);
 	}
 	_this->pipes.clear();
 }
 
-BOOL IPCServer::CreateAndConnectInstance(LPOVERLAPPED overlap, HANDLE &pipe)
+BOOL IPCServerImpl::CreateAndConnectInstance(LPOVERLAPPED overlap, HANDLE &pipe)
 {
+
 	pipe = CreateNamedPipe(
 		TEXT(OPENVR_SPACECALIBRATOR_PIPE_NAME),
 		PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED,
@@ -165,7 +192,7 @@ BOOL IPCServer::CreateAndConnectInstance(LPOVERLAPPED overlap, HANDLE &pipe)
 	return FALSE;
 }
 
-void IPCServer::CompletedReadCallback(DWORD err, DWORD bytesRead, LPOVERLAPPED overlap)
+void IPCServerImpl::CompletedReadCallback(DWORD err, DWORD bytesRead, LPOVERLAPPED overlap)
 {
 	PipeInstance *pipeInst = (PipeInstance *) overlap;
 	BOOL success = FALSE;
@@ -196,7 +223,7 @@ void IPCServer::CompletedReadCallback(DWORD err, DWORD bytesRead, LPOVERLAPPED o
 	}
 }
 
-void IPCServer::CompletedWriteCallback(DWORD err, DWORD bytesWritten, LPOVERLAPPED overlap)
+void IPCServerImpl::CompletedWriteCallback(DWORD err, DWORD bytesWritten, LPOVERLAPPED overlap)
 {
 	PipeInstance *pipeInst = (PipeInstance *) overlap;
 	BOOL success = FALSE;

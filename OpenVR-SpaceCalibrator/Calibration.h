@@ -3,6 +3,7 @@
 #include <Eigen/Core>
 #include <openvr.h>
 #include <vector>
+#include <iostream>
 
 enum class CalibrationState
 {
@@ -87,7 +88,7 @@ struct CalibrationContext
 			Progress
 		} type = String;
 
-		Message(Type type) : type(type) { }
+		Message(Type _type) : type(_type) { }
 
 		std::string str;
 		int progress, target;
