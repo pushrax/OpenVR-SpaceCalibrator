@@ -222,8 +222,6 @@ Sample CollectSample(const CalibrationContext &ctx)
 	}
 	if (!ok)
 	{
-		CalCtx.Log("Aborting calibration!\n");
-		CalCtx.state = CalibrationState::None;
 		return Sample();
 	}
 
@@ -448,18 +446,21 @@ void CalibrationTick(double time)
 		return;
 	}
 
+	static std::vector<Sample> samples;
+
 	auto sample = CollectSample(ctx);
 	if (!sample.valid)
 	{
+		CalCtx.Log("Aborting calibration!\n");
+		CalCtx.state = CalibrationState::None;
+		samples.clear();
 		return;
 	}
-
-	static std::vector<Sample> samples;
 	samples.push_back(sample);
 
 	CalCtx.Progress(samples.size(), CalCtx.SampleCount());
 
-	if (samples.size() == CalCtx.SampleCount())
+	if (samples.size() >= CalCtx.SampleCount())
 	{
 		CalCtx.Log("\n");
 		if (ctx.state == CalibrationState::Rotation)
